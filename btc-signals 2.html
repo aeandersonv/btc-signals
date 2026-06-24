@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BTC Signals">
+<meta name="theme-color" content="#070b14">
+<title>BTC Signal Engine</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQlRDIFNpZ25hbCBFbmdpbmUiLCJzaG9ydF9uYW1lIjoiQlRDIFNpZ25hbHMiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiIzA3MGIxNCIsInRoZW1lX2NvbG9yIjoiIzA3MGIxNCIsImljb25zIjpbeyJzcmMiOiJodHRwczovL2VtcGh5LmdpdGh1Yi5pby9wbGFjZWhvbGRlci1pY29ucy8xOTIuanBnIiwic2l6ZXMiOiIxOTJ4MTkyIiwidHlwZSI6ImltYWdlL2pwZWcifV19">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:#070b14;color:#c8d8f0;font-family:-apple-system,'SF Pro Display',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+  button{font-family:inherit;cursor:pointer}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:#0d1525}
+  ::-webkit-scrollbar-thumb{background:#1a2840;border-radius:2px}
+  .app{padding:16px 16px env(safe-area-inset-bottom) 16px;max-width:100vw}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  .title{font-size:20px;font-weight:800;letter-spacing:-0.02em;background:linear-gradient(90deg,#00c8f0,#00e676);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{font-size:10px;color:#5a7090;margin-top:2px}
+  .controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .btn{border:1px solid #1a2840;background:#111c30;color:#5a7090;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;transition:all 0.15s}
+  .btn.active{background:#00c8f0;color:#070b14;border-color:#00c8f0}
+  .btn.green{background:#001a0e;color:#00e676;border-color:#00e676}
+  .btn.alert-on{background:#001a0e;color:#00e676;border-color:#00e676}
+  .source-banner{margin-bottom:12px;border-radius:8px;padding:10px 14px;font-size:12px}
+  .source-live{background:#001a0e;border:1px solid #00e67644;color:#00e676;font-weight:700}
+  .source-sim{background:#1a0e00;border:1px solid #ffd740;color:#ffd740}
+  .source-sim .sub{font-size:10px;color:#a07840;margin-top:3px}
+  .banner{border-radius:10px;padding:16px;margin-bottom:14px;border:2px solid}
+  .banner.buy{background:rgba(0,230,118,0.07);border-color:#00e676}
+  .banner.sell{background:rgba(255,61,61,0.07);border-color:#ff3d3d}
+  .banner.wait{background:rgba(255,215,64,0.04);border-color:#1a2840}
+  .banner-label{font-size:18px;font-weight:900;margin-bottom:4px}
+  .banner-reasons{font-size:12px;color:#5a7090;margin-bottom:12px}
+  .banner-prices{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+  .price-box{min-width:80px}
+  .price-label{font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#5a7090;margin-bottom:2px}
+  .price-val{font-size:18px;font-weight:700;font-family:monospace}
+  .countdown-row{display:flex;align-items:center;gap:12px;margin-top:8px}
+  .countdown-text{font-size:11px;color:#5a7090}
+  .countdown-time{font-size:13px;font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px}
+  .stat{background:#111c30;border:1px solid #1a2840;border-radius:7px;padding:9px 10px}
+  .stat-label{font-size:9px;color:#5a7090;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:2px}
+  .stat-val{font-size:16px;font-weight:700;font-family:monospace}
+  .tabs{display:flex;border-bottom:1px solid #1a2840;margin-bottom:10px}
+  .tab{background:none;border:none;color:#5a7090;padding:8px 14px;font-size:12px;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.active{color:#00c8f0;border-bottom-color:#00c8f0}
+  .chart-panel{background:#0d1525;border:1px solid #1a2840;border-radius:8px;padding:10px 8px;margin-bottom:8px;overflow:hidden}
+  .chart-label{font-size:9px;color:#5a7090;padding-left:6px;margin-bottom:4px}
+  svg{display:block;width:100%}
+  .hover-detail{background:#0d1525;border:1px solid #00c8f033;border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;gap:16px;flex-wrap:wrap}
+  .hover-item{min-width:50px}
+  .hover-label{font-size:9px;color:#5a7090}
+  .hover-val{font-size:11px;font-family:monospace;font-weight:600}
+  .trade-table{width:100%;border-collapse:collapse;font-size:11px}
+  .trade-table th{color:#5a7090;padding:5px 8px;text-align:left;border-bottom:1px solid #1a2840;font-weight:600}
+  .trade-table td{padding:5px 8px;border-bottom:1px solid #1a284022}
+  .trade-scroll{max-height:220px;overflow-y:auto}
+  .log-panel{background:#0d1525;border:1px solid #1a2840;border-radius:8px;padding:14px}
+  .log-title{font-size:11px;color:#5a7090;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .log-stats{display:flex;gap:14px;font-size:12px}
+  .alert-panel{background:#0d1525;border:1px solid #1a2840;border-radius:8px;padding:16px;margin-bottom:10px}
+  .alert-entry{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid #1a284022;font-size:11px}
+  .footer{font-size:10px;color:#3a5070;margin-top:12px;text-align:right;padding-bottom:8px}
+  .strong-badge{font-size:10px;background:currentColor;border-radius:4px;padding:2px 6px;font-weight:800;margin-left:8px;vertical-align:middle}
+  .strong-badge span{color:#070b14}
+  @media(max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}.price-val{font-size:15px}.banner-label{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div style="text-align:center;padding:40px;color:#5a7090">Loading BTC data…</div>
+</div>
+
+<script>
+// ── Palette ──────────────────────────────────────────────────────────────────
+const C = {
+  bg:'#070b14',panel:'#0d1525',panel2:'#111c30',border:'#1a2840',
+  accent:'#00c8f0',green:'#00e676',red:'#ff3d3d',
+  yellow:'#ffd740',purple:'#b388ff',muted:'#3a5070',
+  text:'#c8d8f0',dim:'#5a7090'
+};
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+// Timeout wrapper — if a fetch hangs for more than 6s, abort and throw
+function fetchWithTimeout(url,opts={},ms=6000){
+  const ctrl=new AbortController();
+  const id=setTimeout(()=>ctrl.abort(),ms);
+  return fetch(url,{...opts,signal:ctrl.signal}).finally(()=>clearTimeout(id));
+}
+async function fetchBinance(iv,limit){
+  const r=await fetchWithTimeout(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${iv}&limit=${limit}`,{mode:'cors'});
+  if(!r.ok)throw new Error(`Binance ${r.status}`);
+  const d=await r.json();
+  return d.map(k=>({time:k[0],open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[5]}));
+}
+async function fetchKraken(iv,limit){
+  const ivMap={'5m':5,'15m':15,'1h':60,'4h':240};
+  const n=ivMap[iv]||15;
+  const since=Math.floor(Date.now()/1000)-n*60*limit;
+  const r=await fetchWithTimeout(`https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=${n}&since=${since}`,{mode:'cors'});
+  if(!r.ok)throw new Error(`Kraken ${r.status}`);
+  const j=await r.json();
+  if(j.error?.length)throw new Error(j.error[0]);
+  const ohlc=Object.values(j.result)[0];
+  return ohlc.slice(-limit).map(k=>({time:k[0]*1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],volume:+k[6]}));
+}
+async function fetchCoinbase(iv,limit){
+  const gMap={'5m':300,'15m':900,'1h':3600,'4h':14400};
+  const g=gMap[iv]||900;
+  const end=new Date(),start=new Date(+end-g*1000*limit);
+  const r=await fetchWithTimeout(`https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${g}&start=${start.toISOString()}&end=${end.toISOString()}`,{mode:'cors'});
+  if(!r.ok)throw new Error(`Coinbase ${r.status}`);
+  const d=await r.json();
+  return d.reverse().map(k=>({time:k[0]*1000,open:+k[3],high:+k[2],low:+k[1],close:+k[4],volume:+k[5]}));
+}
+function genSim(iv,limit){
+  const mins={'5m':5,'15m':15,'1h':60,'4h':240}[iv]||15;
+  let p=67000+Math.random()*4000;
+  return Array.from({length:limit},(_,ri)=>{
+    const i=limit-1-ri;
+    const chg=0.00002+0.0009*(Math.random()*2-1)*Math.sqrt(mins);
+    const open=p,close=open*(1+chg);p=close;
+    return{time:Date.now()-i*mins*60000,open,high:Math.max(open,close)*(1+Math.random()*0.001),low:Math.min(open,close)*(1-Math.random()*0.001),close,volume:40+Math.random()*180};
+  });
+}
+const simCache={};
+async function loadData(iv,limit=200){
+  const srcs=[
+    {name:'Binance',fn:()=>fetchBinance(iv,limit)},
+    {name:'Kraken',fn:()=>fetchKraken(iv,limit)},
+    {name:'Coinbase',fn:()=>fetchCoinbase(iv,limit)},
+  ];
+  const errs=[];
+  for(const s of srcs){
+    try{const d=await s.fn();if(d?.length>10)return{data:d,source:s.name,simulated:false};}
+    catch(e){errs.push(`${s.name}: ${e.message}`);}
+  }
+  if(!simCache[iv])simCache[iv]=genSim(iv,limit);
+  return{data:simCache[iv],source:'Simulated',simulated:true,errors:errs};
+}
+
+// ── Indicators ────────────────────────────────────────────────────────────────
+function sma(a,w){return a.map((_,i)=>{const s=a.slice(Math.max(0,i-w+1),i+1);return s.reduce((x,y)=>x+y,0)/s.length;});}
+function ema(a,w){const k=2/(w+1);return a.reduce((acc,v,i)=>{acc.push(i===0?v:v*k+acc[i-1]*(1-k));return acc;},[]);}
+function computeInd(candles){
+  const prices=candles.map(c=>c.close),vols=candles.map(c=>c.volume);
+  const sm=ema(prices,5);
+  const vel=sm.map((p,i)=>i===0?0:((sm[i]-sm[i-1])/sm[i-1])*100);
+  const acc=ema(vel.map((v,i)=>i<2?0:vel[i]-vel[i-1]),3);
+  const rsiRaw=prices.map((_,i)=>{
+    if(i<14)return 50;
+    const ch=prices.slice(i-13,i+1).map((p,j,a)=>j===0?0:p-a[j-1]);
+    const g=ch.filter(c=>c>0).reduce((a,b)=>a+b,0)/14;
+    const l=Math.abs(ch.filter(c=>c<0).reduce((a,b)=>a+b,0))/14;
+    return l===0?100:100-100/(1+g/l);
+  });
+  const rsi=ema(rsiRaw,3);
+  const bbMid=sma(prices,20);
+  const bbUp=bbMid.map((m,i)=>{const s=prices.slice(Math.max(0,i-19),i+1);const sd=Math.sqrt(s.reduce((a,p)=>a+(p-m)**2,0)/s.length);return m+2*sd;});
+  const bbLo=bbMid.map((m,i)=>{const s=prices.slice(Math.max(0,i-19),i+1);const sd=Math.sqrt(s.reduce((a,p)=>a+(p-m)**2,0)/s.length);return m-2*sd;});
+  const volSma=sma(vols,20);
+  return{sm,vel,acc,rsi,bbMid,bbUp,bbLo,volSma};
+}
+
+// ── Signals ───────────────────────────────────────────────────────────────────
+function computeSignals(candles,ind){
+  const n=candles.length,raw=Array(n).fill(null),conf=Array(n).fill(null);
+  for(let i=22;i<n;i++){
+    const vel=ind.vel[i],acc=ind.acc[i],rsi=ind.rsi[i];
+    const p=candles[i].close,bbL=ind.bbLo[i],bbH=ind.bbUp[i];
+    const vol=candles[i].volume,vAvg=ind.volSma[i];
+    const vp=ind.vel[i-1],rp=ind.rsi[i-1];
+    const vRB=vp<-0.04&&vel>0.01&&acc>0.005;
+    const osB=rsi<35&&rp<35&&p<bbL*1.003&&acc>0;
+    const mB=vel>0.10&&acc>0.01&&vol>vAvg*1.8;
+    const vRS=vp>0.04&&vel<-0.01&&acc<-0.005;
+    const obS=rsi>65&&rp>65&&p>bbH*0.997&&acc<0;
+    const mS=vel<-0.10&&acc<-0.01&&vol>vAvg*1.8;
+    const bh=[vRB,osB,mB].filter(Boolean).length;
+    const sh=[vRS,obS,mS].filter(Boolean).length;
+    if(bh>=1)raw[i]={type:'BUY',strength:bh>=2?'STRONG':'MODERATE',reasons:[vRB&&'Velocity reversal ↑',osB&&'Oversold bounce',mB&&'Volume surge ↑'].filter(Boolean)};
+    else if(sh>=1)raw[i]={type:'SELL',strength:sh>=2?'STRONG':'MODERATE',reasons:[vRS&&'Velocity reversal ↓',obS&&'Overbought exhaustion',mS&&'Volume surge ↓'].filter(Boolean)};
+  }
+  for(let i=1;i<n;i++){
+    if(raw[i]&&raw[i-1]&&raw[i].type===raw[i-1].type)conf[i]={...raw[i],confirmedAt:candles[i].time};
+  }
+  return conf;
+}
+function backtest(candles,sigs,ivMins){
+  const trades=[],holdC=8;let pos=null;
+  for(let i=0;i<candles.length;i++){
+    const sig=sigs[i];
+    if(sig?.type==='BUY'&&!pos)pos={entryIdx:i,entryPrice:candles[i].close,entryTime:candles[i].time,exitDeadline:candles[i].time+holdC*ivMins*60000};
+    if(pos){
+      const fe=i>=pos.entryIdx+holdC,ss=sig?.type==='SELL';
+      const th=candles[i].close>=pos.entryPrice*1.01,sth=candles[i].close<=pos.entryPrice*0.995;
+      if(fe||ss||th||sth){
+        const pnl=((candles[i].close-pos.entryPrice)/pos.entryPrice)*100;
+        trades.push({...pos,exitIdx:i,exitPrice:candles[i].close,exitTime:candles[i].time,pnl,exitReason:th?'Target ✓':sth?'Stop ✗':ss?'Sell signal':'Time exit'});
+        pos=null;
+      }
+    }
+  }
+  return trades;
+}
+function getState(candles,ind,sigs,ivMins){
+  const n=sigs.length,holdC=8;
+  for(let i=n-1;i>=Math.max(0,n-5);i--){
+    if(sigs[i]){
+      const age=n-1-i,expiresAt=sigs[i].confirmedAt+holdC*ivMins*60000;
+      return{signal:sigs[i],age,expiresAt,fresh:age<=1};
+    }
+  }
+  const vel=ind.vel[n-1],acc=ind.acc[n-1],rsi=ind.rsi[n-1];
+  const regime=Math.abs(vel)<0.02?'CONSOLIDATING':vel>0&&acc>0?'BUILDING UP':vel>0&&acc<0?'FADING UP':vel<0&&acc<0?'BUILDING DOWN':'FADING DOWN';
+  return{signal:null,regime,rsi};
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const IV_MINS={'5m':5,'15m':15,'1h':60,'4h':240};
+let state={
+  candles:[],ind:null,signals:[],trades:[],curState:null,
+  interval:'15m',tab:'chart',
+  srcStatus:{loading:true,source:null,simulated:false,errors:[]},
+  lastUpdated:null,hoveredIdx:null,
+  alertsEnabled:false,alertLog:[],lastAlertKey:null
+};
+
+// ── Push / alerts ─────────────────────────────────────────────────────────────
+async function requestAlerts(){
+  if(!('Notification' in window)){alert('This browser does not support notifications.');return;}
+  const p=await Notification.requestPermission();
+  state.alertsEnabled=p==='granted';
+  render();
+}
+function maybeAlert(sigs,candles,ivMins){
+  const last=sigs[sigs.length-1];
+  if(!last)return;
+  const key=`${last.type}-${last.confirmedAt}`;
+  if(key===state.lastAlertKey)return;
+  state.lastAlertKey=key;
+  const price=candles[candles.length-1].close;
+  const target=last.type==='BUY'?(price*1.01).toFixed(0):(price*0.99).toFixed(0);
+  const expiry=new Date(last.confirmedAt+8*ivMins*60000).toLocaleTimeString();
+  const title=`BTC ${last.type}${last.strength==='STRONG'?' 🔥':''}`;
+  const body=`Entry ~$${Math.round(price).toLocaleString()} · Target $${Number(target).toLocaleString()} · Sell by ${expiry}`;
+  state.alertLog=[{time:new Date().toLocaleTimeString(),title,body},...state.alertLog].slice(0,20);
+  if(state.alertsEnabled&&document.hidden){
+    try{new Notification(title,{body,icon:'https://bitcoin.org/img/icons/opengraph.png',tag:key});}catch(e){}
+  }
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+let refreshTimer=null;
+async function load(iv){
+  state.srcStatus={loading:true};render();
+  const result=await loadData(iv);
+  const ivMins=IV_MINS[iv]||15;
+  const ind=computeInd(result.data);
+  const sigs=computeSignals(result.data,ind);
+  const trades=backtest(result.data,sigs,ivMins);
+  const cs=getState(result.data,ind,sigs,ivMins);
+  state.candles=result.data; state.ind=ind; state.signals=sigs;
+  state.trades=trades; state.curState=cs;
+  state.srcStatus={loading:false,source:result.source,simulated:result.simulated,errors:result.errors||[]};
+  state.lastUpdated=new Date();
+  maybeAlert(sigs,result.data,ivMins);
+  render();
+  clearInterval(refreshTimer);
+  refreshTimer=setInterval(()=>load(state.interval),60000);
+}
+
+// ── SVG chart helpers ─────────────────────────────────────────────────────────
+function pathLine(data,xOf,yOf){return data.map((v,i)=>`${i===0?'M':'L'}${xOf(i)},${yOf(v)}`).join(' ');}
+
+function makePriceChart(candles,ind,sigs,trades,hoveredIdx){
+  const W=800,H=200,PAD={l:58,r:10,t:16,b:24};
+  const cw=(W-PAD.l-PAD.r)/candles.length;
+  const prices=candles.map(c=>c.close);
+  const allV=[...prices,...ind.bbUp,...ind.bbLo].filter(Boolean);
+  const mn=Math.min(...allV)*0.9993,mx=Math.max(...allV)*1.0007;
+  const xOf=i=>PAD.l+i*cw+cw/2;
+  const yOf=p=>PAD.t+((mx-p)/(mx-mn))*(H-PAD.t-PAD.b);
+  const line=arr=>pathLine(arr,xOf,yOf);
+
+  let svgParts=`<defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${C.accent}" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="${C.accent}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>`;
+
+  // Grid
+  [0.2,0.5,0.8].forEach(t=>{
+    const y=PAD.t+t*(H-PAD.t-PAD.b);
+    svgParts+=`<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="${C.border}" stroke-width="0.5"/>
+    <text x="${PAD.l-3}" y="${y+3}" fill="${C.dim}" font-size="7.5" text-anchor="end">${(mx-t*(mx-mn)).toFixed(0)}</text>`;
+  });
+
+  // BB fill
+  const revLo=[...ind.bbLo].reverse();
+  svgParts+=`<path d="${line(ind.bbUp)} ${revLo.map((v,i)=>`L${xOf(ind.bbLo.length-1-i)},${yOf(v)}`).join(' ')} Z" fill="${C.accent}" opacity="0.03"/>`;
+  svgParts+=`<path d="${line(ind.bbUp)}" fill="none" stroke="${C.accent}" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.35"/>`;
+  svgParts+=`<path d="${line(ind.bbLo)}" fill="none" stroke="${C.accent}" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.35"/>`;
+
+  // Trade shading
+  trades.forEach(t=>{
+    const x1=xOf(t.entryIdx),x2=xOf(t.exitIdx),col=t.pnl>0?C.green:C.red;
+    svgParts+=`<rect x="${x1}" y="${PAD.t}" width="${Math.max(1,x2-x1)}" height="${H-PAD.t-PAD.b}" fill="${col}" opacity="0.05"/>`;
+  });
+
+  // Price
+  svgParts+=`<path d="${line(prices)} L${xOf(prices.length-1)},${H-PAD.b} L${xOf(0)},${H-PAD.b} Z" fill="url(#pg)"/>`;
+  svgParts+=`<path d="${line(prices)}" fill="none" stroke="${C.accent}" stroke-width="1.5"/>`;
+
+  // Signals
+  sigs.forEach((sig,i)=>{
+    if(!sig)return;
+    const x=xOf(i),y=yOf(prices[i]),col=sig.type==='BUY'?C.green:C.red;
+    if(sig.strength==='STRONG')svgParts+=`<circle cx="${x}" cy="${y}" r="10" fill="${col}" opacity="0.12"/>`;
+    svgParts+=sig.type==='BUY'
+      ?`<polygon points="${x},${y-9} ${x-5},${y+2} ${x+5},${y+2}" fill="${col}" stroke="#070b14" stroke-width="0.8" opacity="0.9"/>`
+      :`<polygon points="${x},${y+9} ${x-5},${y-2} ${x+5},${y-2}" fill="${col}" stroke="#070b14" stroke-width="0.8" opacity="0.9"/>`;
+  });
+
+  // Hover
+  if(hoveredIdx!==null){
+    svgParts+=`<line x1="${xOf(hoveredIdx)}" y1="${PAD.t}" x2="${xOf(hoveredIdx)}" y2="${H-PAD.b}" stroke="${C.yellow}" stroke-width="0.8" stroke-dasharray="3,3"/>`;
+    svgParts+=`<circle cx="${xOf(hoveredIdx)}" cy="${yOf(prices[hoveredIdx])}" r="3.5" fill="${C.yellow}"/>`;
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;cursor:crosshair;touch-action:none" id="pricechart">${svgParts}</svg>`;
+}
+
+function makeMiniChart(data,color,label,H=52){
+  const W=800,PAD={l:58,r:10,t:4,b:4};
+  const cw=(W-PAD.l-PAD.r)/data.length;
+  const mn=Math.min(...data),mx=Math.max(...data),range=mx-mn||1;
+  const xOf=i=>PAD.l+i*cw+cw/2;
+  const yOf=v=>PAD.t+((mx-v)/range)*(H-PAD.t-PAD.b);
+  const zY=yOf(0);
+  const d=pathLine(data,xOf,yOf);
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    ${mn<0&&mx>0?`<line x1="${PAD.l}" y1="${zY}" x2="${W-PAD.r}" y2="${zY}" stroke="${C.border}" stroke-width="0.7" stroke-dasharray="3,3"/>`:''}
+    <text x="${PAD.l-3}" y="${H/2+3}" fill="${C.dim}" font-size="7.5" text-anchor="end">${label}</text>
+    <path d="${d} L${xOf(data.length-1)},${zY} L${xOf(0)},${zY} Z" fill="${color}" opacity="0.08"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.1"/>
+  </svg>`;
+}
+
+function makeRSI(data,H=46){
+  const W=800,PAD={l:58,r:10,t:4,b:4};
+  const cw=(W-PAD.l-PAD.r)/data.length;
+  const xOf=i=>PAD.l+i*cw+cw/2;
+  const yOf=v=>PAD.t+((100-v)/100)*(H-PAD.t-PAD.b);
+  const y70=yOf(70),y30=yOf(30);
+  const d=pathLine(data,xOf,yOf);
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <rect x="${PAD.l}" y="${y70}" width="${W-PAD.l-PAD.r}" height="${y30-y70}" fill="${C.accent}" opacity="0.04"/>
+    <line x1="${PAD.l}" y1="${y70}" x2="${W-PAD.r}" y2="${y70}" stroke="${C.red}" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>
+    <line x1="${PAD.l}" y1="${y30}" x2="${W-PAD.r}" y2="${y30}" stroke="${C.green}" stroke-width="0.5" stroke-dasharray="3,3" opacity="0.5"/>
+    <text x="${PAD.l-3}" y="${H/2+3}" fill="${C.dim}" font-size="7.5" text-anchor="end">RSI</text>
+    <path d="${d}" fill="none" stroke="${C.yellow}" stroke-width="1.1"/>
+  </svg>`;
+}
+
+function makeCountdownSVG(expiresAt){
+  const remaining=Math.max(0,expiresAt-Date.now());
+  const totalMs=8*15*60000;
+  const pct=Math.min(1,remaining/totalMs);
+  const r=20,circ=2*Math.PI*r;
+  const dash=circ*pct;
+  const mins=Math.floor(remaining/60000);
+  const secs=Math.floor((remaining%60000)/1000);
+  const col=pct>0.5?C.green:pct>0.25?C.yellow:C.red;
+  const expired=remaining===0;
+  return`<svg width="48" height="48" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="${r}" fill="none" stroke="${C.border}" stroke-width="3.5"/>
+    <circle cx="24" cy="24" r="${r}" fill="none" stroke="${col}" stroke-width="3.5"
+      stroke-dasharray="${dash} ${circ}" stroke-linecap="round" transform="rotate(-90 24 24)"/>
+    <text x="24" y="21" text-anchor="middle" fill="${C.text}" font-size="8.5" font-weight="700" font-family="monospace">${expired?'DONE':`${mins}m`}</text>
+    <text x="24" y="31" text-anchor="middle" fill="${C.dim}" font-size="7.5" font-family="monospace">${expired?'':String(secs).padStart(2,'0')+'s'}</text>
+  </svg>`;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+let countdownInterval=null;
+function render(){
+  const {candles,ind,signals,trades,curState,interval,tab,srcStatus,lastUpdated,hoveredIdx,alertsEnabled,alertLog}=state;
+  const ivMins=IV_MINS[interval]||15;
+  const price=candles.slice(-1)[0]?.close||0;
+  const vel=ind?.vel.slice(-1)[0]||0;
+  const rsiNow=ind?.rsi.slice(-1)[0]||50;
+  const wins=trades.filter(t=>t.pnl>0).length;
+  const totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
+
+  // Header
+  let html=`<div class="header">
+    <div>
+      <div class="title">BTC Signal Engine</div>
+      <div class="subtitle">2-candle confirmed signals · sell timer · push alerts</div>
+    </div>
+    <div class="controls">
+      ${['5m','15m','1h','4h'].map(iv=>`<button class="btn${interval===iv?' active':''}" onclick="setInterval('${iv}')">${iv}</button>`).join('')}
+      <button class="btn" onclick="reload()">↻</button>
+      <button class="btn${alertsEnabled?' alert-on':''}" onclick="requestAlerts()">${alertsEnabled?'🔔 ON':'🔕 Alerts'}</button>
+    </div>
+  </div>`;
+
+  // Source banner
+  if(srcStatus.loading){
+    html+=`<div class="source-banner" style="background:#0d1525;border:1px solid #1a2840;color:#5a7090">⟳ Connecting to live data…</div>`;
+  } else if(srcStatus.simulated){
+    html+=`<div class="source-banner source-sim">
+      <div>⚠ SIMULATED DATA — stable on refresh, but not real prices</div>
+      <div class="sub">${srcStatus.errors?.join(' · ')||''} &nbsp;<button class="btn" style="margin-left:8px;padding:3px 8px;font-size:10px" onclick="newSim()">↻ New sim</button></div>
+    </div>`;
+  } else {
+    html+=`<div class="source-banner source-live">✓ Live data — ${srcStatus.source} &nbsp;<span style="font-size:10px;color:#5a7090;font-weight:400">Refreshing only updates the latest candle</span></div>`;
+  }
+
+  if(srcStatus.loading||!ind){
+    document.getElementById('app').innerHTML=html;
+    return;
+  }
+
+  // Action banner
+  const cs=curState;
+  if(cs?.signal){
+    const sig=cs.signal,isBuy=sig.type==='BUY';
+    const col=isBuy?C.green:C.red;
+    const target=isBuy?(price*1.01):(price*0.99);
+    const stop=isBuy?(price*0.995):(price*1.005);
+    const fresh=cs.fresh;
+    html+=`<div class="banner ${isBuy?'buy':'sell'}" ${fresh?`style="box-shadow:0 0 28px ${col}25"`:''}">
+      <div class="banner-label" style="color:${col}">
+        ${isBuy?'🟢 BUY NOW':'🔴 SELL NOW'}
+        ${sig.strength==='STRONG'?`<span class="strong-badge"><span>STRONG</span></span>`:''}
+        ${cs.age>0?`<span style="font-size:10px;color:${C.dim};font-weight:400;margin-left:8px">${cs.age} candle${cs.age>1?'s':''} ago</span>`:''}
+      </div>
+      <div class="banner-reasons">${sig.reasons.join('  ·  ')}</div>
+      <div class="banner-prices">
+        <div class="price-box"><div class="price-label">Entry</div><div class="price-val" style="color:${C.text}">$${Math.round(price).toLocaleString()}</div></div>
+        <div class="price-box"><div class="price-label" style="color:${C.green}">Target +1%</div><div class="price-val" style="color:${C.green}">$${Math.round(target).toLocaleString()}</div></div>
+        <div class="price-box"><div class="price-label" style="color:${C.red}">Stop −0.5%</div><div class="price-val" style="color:${C.red}">$${Math.round(stop).toLocaleString()}</div></div>
+      </div>
+      ${cs.expiresAt?`<div class="countdown-row" id="countdown-row">
+        <div id="countdown-svg">${makeCountdownSVG(cs.expiresAt)}</div>
+        <div><div class="countdown-text">Trade window — sell by</div><div class="countdown-time" id="countdown-time">${new Date(cs.expiresAt).toLocaleTimeString()}</div></div>
+      </div>`:''}
+    </div>`;
+  } else {
+    const regCol=cs?.regime==='BUILDING UP'?C.green:cs?.regime==='BUILDING DOWN'?C.red:C.yellow;
+    html+=`<div class="banner wait">
+      <div class="banner-label" style="color:${regCol}">⏸ NO SIGNAL — ${cs?.regime||'ANALYZING'}</div>
+      <div class="banner-reasons">RSI ${cs?.rsi?.toFixed(0)||'—'} · Waiting for 2-candle confirmed setup</div>
+    </div>`;
+  }
+
+  // Stats
+  const statsData=[
+    ['Price',`$${Math.round(price).toLocaleString()}`,C.accent],
+    ['Velocity',`${vel>0?'+':''}${vel.toFixed(3)}%`,vel>0?C.green:C.red],
+    ['RSI',rsiNow.toFixed(0),rsiNow>70?C.red:rsiNow<30?C.green:C.yellow],
+    ['Trades',trades.length,C.text],
+    ['Win Rate',trades.length?`${(wins/trades.length*100).toFixed(0)}%`:'—',wins/trades.length>0.5?C.green:C.red],
+    ['P&L',trades.length?`${totalPnl>0?'+':''}${totalPnl.toFixed(1)}%`:'—',totalPnl>0?C.green:C.red],
+  ];
+  html+=`<div class="stats">${statsData.map(([l,v,c])=>`<div class="stat"><div class="stat-label">${l}</div><div class="stat-val" style="color:${c}">${v}</div></div>`).join('')}</div>`;
+
+  // Tabs
+  html+=`<div class="tabs">
+    ${[['chart','📈 Chart'],['log','📋 Log'],['alerts','🔔 Alerts']].map(([k,lbl])=>`<button class="tab${tab===k?' active':''}" onclick="setTab('${k}')">${lbl}</button>`).join('')}
+  </div>`;
+
+  // Tab content
+  if(tab==='chart'){
+    html+=`<div class="chart-panel">
+      <div class="chart-label">PRICE + BB &nbsp;·&nbsp; <span style="color:${C.green}">▲ BUY</span> &nbsp;·&nbsp; <span style="color:${C.red}">▼ SELL</span></div>
+      ${makePriceChart(candles,ind,signals,trades,hoveredIdx)}
+    </div>
+    <div class="chart-panel" style="padding:6px 8px">
+      ${makeMiniChart(ind.vel,C.green,'VEL',50)}
+      ${makeMiniChart(ind.acc,C.yellow,'ACC',42)}
+      ${makeRSI(ind.rsi,44)}
+    </div>`;
+
+    if(hoveredIdx!==null&&candles[hoveredIdx]){
+      const c=candles[hoveredIdx],i=hoveredIdx;
+      html+=`<div class="hover-detail">
+        ${[
+          ['TIME',new Date(c.time).toLocaleTimeString(),C.text],
+          ['CLOSE',`$${Math.round(c.close).toLocaleString()}`,C.accent],
+          ['VEL',`${ind.vel[i]?.toFixed(4)}%`,ind.vel[i]>0?C.green:C.red],
+          ['ACC',ind.acc[i]?.toFixed(5),ind.acc[i]>0?C.green:C.red],
+          ['RSI',ind.rsi[i]?.toFixed(1),ind.rsi[i]>70?C.red:ind.rsi[i]<30?C.green:C.yellow],
+          ['SIG',signals[i]?.type||'—',signals[i]?.type==='BUY'?C.green:signals[i]?.type==='SELL'?C.red:C.dim],
+        ].map(([l,v,c])=>`<div class="hover-item"><div class="hover-label">${l}</div><div class="hover-val" style="color:${c}">${v}</div></div>`).join('')}
+      </div>`;
+    }
+  }
+
+  if(tab==='log'){
+    html+=`<div class="log-panel">
+      <div class="log-title">Backtest Trade Log
+        <div class="log-stats">
+          <span style="color:${C.dim}">Trades: <b style="color:${C.text}">${trades.length}</b></span>
+          <span style="color:${C.dim}">Win rate: <b style="color:${trades.length&&wins/trades.length>0.5?C.green:C.red}">${trades.length?(wins/trades.length*100).toFixed(0)+'%':'—'}</b></span>
+          <span style="color:${C.dim}">P&L: <b style="color:${totalPnl>0?C.green:C.red}">${trades.length?(totalPnl>0?'+':'')+totalPnl.toFixed(2)+'%':'—'}</b></span>
+        </div>
+      </div>
+      ${trades.length?`<div class="trade-scroll"><table class="trade-table">
+        <thead><tr><th>#</th><th>Entry</th><th>Entry $</th><th>Exit $</th><th>P&L</th><th>Reason</th></tr></thead>
+        <tbody>${trades.slice().reverse().map((t,i)=>`<tr>
+          <td style="color:${C.dim}">${trades.length-i}</td>
+          <td style="font-family:monospace;font-size:10px">${new Date(t.entryTime).toLocaleTimeString()}</td>
+          <td style="font-family:monospace">$${Math.round(t.entryPrice).toLocaleString()}</td>
+          <td style="font-family:monospace">$${Math.round(t.exitPrice).toLocaleString()}</td>
+          <td style="font-family:monospace;font-weight:700;color:${t.pnl>0?C.green:C.red}">${t.pnl>0?'+':''}${t.pnl.toFixed(2)}%</td>
+          <td style="color:${t.exitReason.includes('✓')?C.green:t.exitReason.includes('✗')?C.red:C.dim};font-size:10px">${t.exitReason}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`:
+      `<div style="font-size:12px;color:${C.dim};font-style:italic">No confirmed trades in this window yet.</div>`}
+    </div>`;
+  }
+
+  if(tab==='alerts'){
+    html+=`<div class="alert-panel">
+      <div style="font-size:13px;font-weight:600;color:${C.text};margin-bottom:8px">Push Alert Setup</div>
+      <div style="font-size:12px;color:${C.dim};line-height:1.7;margin-bottom:12px">
+        When installed as a home screen app (see below) and alerts are enabled, you'll get a push notification the moment a BUY signal is confirmed — even with the screen locked.<br><br>
+        Sell deadline = signal time + 8 candles × ${ivMins} min = <span style="color:${C.accent};font-family:monospace">${8*ivMins} min</span> from signal.
+      </div>
+      <button class="btn${alertsEnabled?' alert-on':''}" style="padding:9px 18px;font-size:13px;border-radius:7px" onclick="requestAlerts()">
+        ${alertsEnabled?'✓ Alerts enabled — tap to re-confirm':'Enable push notifications'}
+      </button>
+    </div>
+    ${alertLog.length?`<div class="log-panel">
+      <div class="log-title">Alert Log</div>
+      ${alertLog.map(a=>`<div class="alert-entry">
+        <span style="color:${C.dim};font-family:monospace;min-width:65px">${a.time}</span>
+        <span style="color:${C.text};font-weight:600">${a.title}</span>
+        <span style="color:${C.dim}">${a.body}</span>
+      </div>`).join('')}
+    </div>`:''} 
+    <div class="log-panel" style="margin-top:10px">
+      <div class="log-title">📱 Install as iPhone App</div>
+      <div style="font-size:12px;color:${C.dim};line-height:1.85">
+        <b style="color:${C.text}">1.</b> Open this page in <b style="color:${C.text}">Safari</b> (not Chrome)<br>
+        <b style="color:${C.text}">2.</b> Tap the <b style="color:${C.text}">Share button</b> (box with arrow at bottom of screen)<br>
+        <b style="color:${C.text}">3.</b> Scroll down and tap <b style="color:${C.text}">"Add to Home Screen"</b><br>
+        <b style="color:${C.text}">4.</b> Tap <b style="color:${C.text}">Add</b> — the app icon appears on your home screen<br>
+        <b style="color:${C.text}">5.</b> Open it from home screen, tap <b style="color:${C.text}">Enable push notifications</b><br><br>
+        <span style="color:${C.yellow}">⚠ Requires iOS 16.4+ for push notifications from home screen apps.</span>
+      </div>
+    </div>`;
+  }
+
+  html+=`<div class="footer">${lastUpdated?`Updated ${lastUpdated.toLocaleTimeString()} · auto-refreshes every 60s`:''} · Not financial advice</div>`;
+
+  document.getElementById('app').innerHTML=html;
+
+  // Attach chart touch/mouse events
+  attachChartEvents();
+
+  // Start countdown ticker
+  clearInterval(countdownInterval);
+  if(cs?.expiresAt){
+    countdownInterval=setInterval(()=>{
+      const el=document.getElementById('countdown-svg');
+      const tel=document.getElementById('countdown-time');
+      if(el)el.innerHTML=makeCountdownSVG(cs.expiresAt);
+      if(tel){
+        const rem=Math.max(0,cs.expiresAt-Date.now());
+        tel.textContent=rem===0?'Window closed — exit now':`Sell by ${new Date(cs.expiresAt).toLocaleTimeString()}`;
+        tel.style.color=rem===0?C.red:C.text;
+      }
+    },1000);
+  }
+}
+
+function attachChartEvents(){
+  const svg=document.getElementById('pricechart');
+  if(!svg)return;
+  const {candles}=state;
+  const W=800,PAD_L=58,PAD_R=10;
+  const cw=(W-PAD_L-PAD_R)/candles.length;
+  function getIdx(clientX){
+    const rect=svg.getBoundingClientRect();
+    const svgX=((clientX-rect.left)/rect.width)*W;
+    const i=Math.round((svgX-PAD_L)/cw);
+    return Math.max(0,Math.min(candles.length-1,i));
+  }
+  svg.addEventListener('mousemove',e=>{state.hoveredIdx=getIdx(e.clientX);render();},{passive:true});
+  svg.addEventListener('mouseleave',()=>{state.hoveredIdx=null;render();});
+  svg.addEventListener('touchmove',e=>{
+    if(e.touches.length===1){state.hoveredIdx=getIdx(e.touches[0].clientX);render();}
+  },{passive:true});
+  svg.addEventListener('touchend',()=>{state.hoveredIdx=null;render();});
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function setInterval(iv){state.interval=iv;load(iv);}
+function reload(){load(state.interval);}
+function setTab(t){state.tab=t;render();}
+function newSim(){delete simCache[state.interval];load(state.interval);}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+load(state.interval);
+</script>
+</body>
+</html>
