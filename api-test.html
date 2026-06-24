@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>API Test</title></head>
+<body style="background:#111;color:#eee;font-family:monospace;padding:20px">
+<h3>Testing crypto APIs from this browser...</h3>
+<div id="log"></div>
+<script>
+const log = (msg, color='#eee') => {
+  document.getElementById('log').innerHTML += `<div style="color:${color};margin:4px 0">${msg}</div>`;
+};
+
+async function test(name, url) {
+  log(`⟳ Trying ${name}...`, '#888');
+  const t = Date.now();
+  try {
+    const r = await Promise.race([
+      fetch(url, {mode:'cors'}),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+    ]);
+    const elapsed = Date.now() - t;
+    if (!r.ok) { log(`✗ ${name}: HTTP ${r.status} (${elapsed}ms)`, '#f66'); return; }
+    const j = await r.json();
+    const len = Array.isArray(j) ? j.length : (j?.data?.Data?.length || j?.result?.list?.length || JSON.stringify(j).length);
+    log(`✓ ${name}: OK — ${len} items (${elapsed}ms)`, '#0f6');
+  } catch(e) {
+    log(`✗ ${name}: ${e.message} (${Date.now()-t}ms)`, '#f66');
+  }
+}
+
+(async () => {
+  await test('CryptoCompare', 'https://min-api.cryptocompare.com/data/v2/histominute?fsym=BTC&tsym=USD&limit=10&aggregate=15');
+  await test('Bybit', 'https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=15&limit=10');
+  await test('OKX', 'https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=15m&limit=10');
+  await test('Binance', 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=10');
+  await test('Binance US', 'https://api.binance.us/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=10');
+  await test('Kraken', 'https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=15');
+  await test('Gate.io', 'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=BTC_USDT&interval=15m&limit=10');
+  await test('Mexc', 'https://api.mexc.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=10');
+  log('--- done ---', '#888');
+})();
+</script>
+</body>
+</html>
