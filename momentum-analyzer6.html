@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WAVE">
+<meta name="theme-color" content="#060a10">
+<title>WAVE — Momentum Analyzer</title>
+<style>
+:root{
+  --bg:#060a10;--bg2:#0b1018;--bg3:#101620;--bg4:#151d2a;
+  --border:#1c2a3a;--text:#d0e0f0;--muted:#445566;--dim:#2a3a4a;
+  --green:#00d97e;--green2:#00ff94;--red:#ff3355;
+  --blue:#2196f3;--blue2:#64b5f6;--gold:#ffb830;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'SF Mono',ui-monospace,monospace;font-size:13px;overscroll-behavior:none}
+.app{display:flex;flex-direction:column;height:100%}
+
+/* ── topbar ── */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:calc(10px + var(--safe-top)) 14px 10px;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.logo{font-size:1.1rem;font-weight:700;letter-spacing:.1em;
+  background:linear-gradient(90deg,var(--green2),var(--blue2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:.58rem;color:var(--muted);letter-spacing:.1em}
+.pair-select{background:var(--bg4);color:var(--blue2);border:1px solid var(--border);
+  padding:5px 10px;border-radius:6px;font-family:inherit;font-size:.8rem;cursor:pointer}
+.status-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.pulse.live{background:var(--green);animation:glow 2s infinite}
+.pulse.err{background:var(--red)}
+.pulse.busy{width:10px;height:10px;border:2px solid var(--gold);border-top-color:transparent;
+  border-radius:50%;background:transparent;animation:spin .7s linear infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 #00d97e55}50%{box-shadow:0 0 0 5px #00d97e00}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.last-ts{font-size:.65rem;color:var(--muted)}
+.run-btn{background:transparent;color:var(--green);border:1px solid var(--green);
+  padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.8rem;transition:background .15s}
+.run-btn:hover{background:#00d97e12}
+.run-btn:disabled{opacity:.4;cursor:default}
+
+/* ── settings ── */
+.settings{background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.stoggle{width:100%;background:none;border:none;color:var(--muted);font-family:inherit;
+  font-size:.7rem;padding:7px 14px;text-align:left;cursor:pointer;
+  display:flex;justify-content:space-between;letter-spacing:.05em;text-transform:uppercase}
+.stoggle:hover{color:var(--text)}
+.sbody{padding:10px 14px 12px;border-top:1px solid var(--border);display:none;flex-direction:column;gap:12px}
+.sbody.open{display:flex}
+.srow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.sgrp{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.slabel{font-size:.68rem;color:var(--muted)}
+.slabel b{color:var(--text)}
+.sinput{background:var(--bg4);color:var(--gold);border:1px solid var(--border);
+  width:72px;padding:5px 8px;border-radius:5px;font-family:inherit;font-size:.8rem;text-align:right}
+.sdesc{font-size:.63rem;color:var(--dim);line-height:1.5;max-width:200px}
+.ssum{padding:5px 14px 7px;font-size:.68rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.ssum b{color:var(--gold)}
+
+/* ── scroll ── */
+.scroll{flex:1;overflow-y:auto;padding:10px;
+  padding-bottom:calc(16px + var(--safe-bot));display:flex;flex-direction:column;gap:10px}
+
+/* ── progress log ── */
+.plog{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px}
+.plog-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.ll{font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--bg3);
+  display:flex;align-items:center;gap:8px}
+.ll:last-child{border-bottom:none}
+.li{flex-shrink:0}.lt{flex:1}
+.lv{color:var(--blue2);font-size:.68rem}.le{color:var(--red);font-size:.68rem}
+
+/* ── section label ── */
+.sec{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:2px 0}
+
+/* ── physics strip ── */
+.phys-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 10px}
+.pc-lbl{font-size:.62rem;color:var(--muted);margin-bottom:3px}
+.pc-val{font-size:.88rem;font-weight:700}
+.pc-sub{font-size:.6rem;color:var(--dim);margin-top:2px}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--text)}
+
+/* ── 2×2 timeframe cards (original style) ── */
+.tf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tf-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px}
+.tf-card.signal-buy{border-color:var(--green);box-shadow:0 0 14px #00d97e1a}
+.tf-card.signal-sell{border-color:var(--red);box-shadow:0 0 14px #ff335518}
+.tf-card.signal-hold{border-color:var(--border)}
+.tf-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tf-label{color:var(--blue2);font-size:.9rem;font-weight:700}
+.sig-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:3px}
+.sig-badge.buy{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.sig-badge.sell{background:#ff335518;color:var(--red);border:1px solid var(--red)}
+.sig-badge.hold{background:#44556618;color:var(--muted);border:1px solid var(--dim)}
+.tf-price{display:flex;align-items:baseline;gap:7px;margin-bottom:8px}
+.tf-price-val{font-size:1.05rem;color:var(--text)}
+.tf-chg{font-size:.75rem}
+.tf-metrics{display:flex;flex-direction:column;gap:3px}
+.mrow{display:flex;justify-content:space-between;align-items:center}
+.mk{font-size:.67rem;color:var(--muted)}.mv{font-size:.72rem}
+.score-wrap{margin-top:6px}
+.score-track{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:3px}
+.score-fill{height:100%;border-radius:2px;transition:width .4s}
+
+/* ── horizon cards ── */
+.hgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:560px){.hgrid{grid-template-columns:repeat(3,1fr)}}
+.hcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px}
+.hcard.hi{border-color:var(--green);box-shadow:0 0 12px #00d97e18}
+.hcard.mid{border-color:var(--gold)}
+.hcard.lo,.hcard.none{border-color:var(--border)}
+.hcard.none{opacity:.5}
+.hcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.hlabel{color:var(--blue2);font-size:.9rem;font-weight:700}
+.cbadge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:3px}
+.cbadge.hi{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.cbadge.mid{background:#ffb83018;color:var(--gold);border:1px solid var(--gold)}
+.cbadge.lo,.cbadge.none{color:var(--muted);border:1px solid var(--dim)}
+.btrack{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.bfill{height:100%;border-radius:2px;transition:width .5s}
+.srow2{display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:2px}
+.sk{font-size:.65rem;color:var(--muted)}.sv{font-size:.7rem}
+.srcdiv{margin-top:5px;padding-top:5px;border-top:1px solid var(--bg3)}
+.srcline{font-size:.62rem;color:var(--muted)}
+
+/* ── consensus summary card (original style) ── */
+.consensus{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px}
+.consensus.buy{border-color:var(--green);background:#00d97e08;box-shadow:0 0 18px #00d97e14}
+.consensus.hold{border-color:var(--dim)}
+.cs-eye{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.cs-sig{font-size:1.7rem;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.cs-sig.buy{color:var(--green2)}.cs-sig.hold{color:var(--muted)}
+.cs-mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+@media(max-width:380px){.cs-mini-grid{grid-template-columns:repeat(2,1fr)}}
+.cs-cell{text-align:center;padding:5px 4px;background:var(--bg3);border-radius:4px}
+.cs-cell-tf{font-size:.62rem;color:var(--muted)}
+.cs-cell-sig{font-size:.82rem;font-weight:700;margin-top:2px}
+.cs-detail{font-size:.72rem;color:var(--muted);line-height:1.8}
+.cs-detail b{color:var(--text)}.hi{color:var(--green2)}.warn{color:var(--gold)}
+
+/* ── ML metrics panel ── */
+.ml-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ml-hdr{padding:9px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.ml-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ml-sub{font-size:.63rem;color:var(--dim)}
+table.ml{width:100%;border-collapse:collapse;font-size:.7rem}
+table.ml th{background:var(--bg3);color:var(--muted);padding:5px 9px;text-align:left;
+  font-weight:normal;font-size:.63rem;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+table.ml td{padding:5px 9px;border-bottom:1px solid var(--bg3);white-space:nowrap}
+table.ml tr:last-child td{border-bottom:none}
+table.ml tr:hover td{background:var(--bg3)}
+.mhi{color:var(--green)}.mmid{color:var(--gold)}.mlo{color:var(--red)}.mna{color:var(--dim)}
+.bari{display:inline-block;height:3px;border-radius:2px;vertical-align:middle;margin-left:5px}
+.ml-foot{padding:7px 12px;font-size:.63rem;color:var(--dim);line-height:1.7;
+  border-top:1px solid var(--border)}
+
+/* ── candle data tables ── */
+.ctable-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ctable-hdr{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;user-select:none}
+.ctable-hdr:hover{background:var(--bg3)}
+.ctable-title{font-size:.72rem;color:var(--blue2);font-weight:700}
+.ctable-meta{font-size:.65rem;color:var(--muted)}
+.ctable-body{display:none;overflow-x:auto;border-top:1px solid var(--border)}
+.ctable-body.open{display:block}
+table.ct{width:100%;border-collapse:collapse;font-size:.67rem;min-width:540px}
+table.ct th{background:var(--bg3);color:var(--muted);padding:5px 8px;text-align:right;
+  font-weight:normal;font-size:.6rem;text-transform:uppercase;white-space:nowrap}
+table.ct th:first-child{text-align:left}
+table.ct td{padding:5px 8px;border-bottom:1px solid var(--bg3);text-align:right;white-space:nowrap}
+table.ct td:first-child{text-align:left;color:var(--muted)}
+table.ct tr:last-child td{border-bottom:none}
+table.ct tr.live-row td{background:#00d97e07}
+.up{color:var(--green)}.dn{color:var(--red)}.ct-neu{color:var(--text)}
+
+/* ── data sources ── */
+.ds-table{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ds-row{display:flex;justify-content:space-between;align-items:center;
+  padding:7px 12px;border-bottom:1px solid var(--bg3);font-size:.7rem}
+.ds-row:last-child{border-bottom:none}
+.ds-k{color:var(--muted)}.ds-ok{color:var(--green)}.ds-err{color:var(--red)}
+
+/* ── notif ── */
+.notif-row{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.notif-row p{font-size:.7rem;color:var(--muted);flex:1;min-width:160px;line-height:1.5}
+.notif-btn{background:var(--bg4);color:var(--blue2);border:1px solid var(--blue);
+  padding:5px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:.75rem}
+
+/* ── toast ── */
+.toast{position:fixed;bottom:calc(20px + var(--safe-bot));left:50%;transform:translateX(-50%);
+  background:var(--bg2);border:1px solid var(--green);color:var(--green2);
+  padding:7px 18px;border-radius:20px;font-size:.78rem;white-space:nowrap;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.empty-hint{color:var(--muted);font-size:.8rem;text-align:center;padding:40px 20px;line-height:1.9}
+.empty-hint b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- topbar -->
+<div class="topbar">
+  <div>
+    <div class="logo">WAVE</div>
+    <div class="logo-sub">MOMENTUM ANALYZER</div>
+  </div>
+  <select class="pair-select" id="pairSelect" onchange="saveSettings()">
+    <option value="BTCUSDT">BTC / USDT</option>
+    <option value="ETHUSDT">ETH / USDT</option>
+    <option value="SOLUSDT">SOL / USDT</option>
+    <option value="XRPUSDT">XRP / USDT</option>
+    <option value="BNBUSDT">BNB / USDT</option>
+  </select>
+  <div class="status-wrap">
+    <div class="pulse" id="pulse"></div>
+    <div class="last-ts" id="lastTs">—</div>
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">↻ Analyze</button>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="settings">
+  <button class="stoggle" onclick="toggleSettings()">
+    <span>⚙ Settings</span><span id="sarrow">▾</span>
+  </button>
+  <div class="sbody" id="sbody">
+    <div class="srow">
+      <div class="sgrp">
+        <div class="slabel"><b>Maker fee %</b></div>
+        <input class="sinput" type="number" id="makerFee" value="0.10" step="0.01" min="0" max="2"
+          oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Limit orders that rest on the book. Typically 0.08–0.10%.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Taker fee %</b></div>
+        <input class="sinput" type="number" id="takerFee" value="0.10" step="0.01" min="0" max="2"
+          oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Market orders that fill immediately. Usually equal to maker.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Min confidence %</b></div>
+        <input class="sinput" type="number" id="minConf" value="55" step="1" min="50" max="95"
+          oninput="saveSettings()">
+        <div class="sdesc">BUY signal only when KNN match rate exceeds this. 55% = more signals, 70% = selective.</div>
+      </div>
+    </div>
+  </div>
+  <div class="ssum">
+    Round-trip fee: <b id="rtFee">0.20%</b>
+    &nbsp;·&nbsp; Min profitable move: <b id="needMove">1.20%</b>
+    &nbsp;·&nbsp; Refresh is manual — tap ↻ Analyze when ready
+  </div>
+</div>
+
+<!-- scroll body -->
+<div class="scroll" id="scroll">
+  <div class="empty-hint">
+    Select a coin pair above, then tap <b>↻ Analyze</b>.<br><br>
+    Fetches candle data across 5 timeframes · computes velocity, acceleration &amp; jerk per candle ·
+    runs KNN pattern-match against historical setups that preceded a +1% move ·
+    reports confidence and model accuracy per prediction horizon.
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════
+const API='https://data-api.binance.vision/api/v3/klines';
+const SOURCES=[
+  {id:'5m',  interval:'5m',  limit:1000, label:'5m  (~3.5 days)', minutes:5},
+  {id:'15m', interval:'15m', limit:1000, label:'15m (~10 days)',  minutes:15},
+  {id:'1h',  interval:'1h',  limit:500,  label:'1h  (~21 days)',  minutes:60},
+  {id:'4h',  interval:'4h',  limit:180,  label:'4h  (~30 days)',  minutes:240},
+  {id:'1d',  interval:'1d',  limit:90,   label:'1d  (~3 months)', minutes:1440},
+];
+const HORIZONS=[
+  {label:'15m', minutes:15,   srcIds:['5m','15m']},
+  {label:'30m', minutes:30,   srcIds:['5m','15m']},
+  {label:'1h',  minutes:60,   srcIds:['15m','1h']},
+  {label:'6h',  minutes:360,  srcIds:['1h','4h']},
+  {label:'24h', minutes:1440, srcIds:['4h','1d']},
+];
+// Which sources show as the 4 live timeframe cards (original-style)
+const LIVE_TF=['5m','15m','1h','1d'];
+const K=10,LOOKBACK=4,DECAY=0.5,TIMEOUT=10000,RECENT_N=10;
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem('wave_v4')||'{}');
+    if(s.pair)  document.getElementById('pairSelect').value=s.pair;
+    if(s.maker!=null) document.getElementById('makerFee').value=s.maker;
+    if(s.taker!=null) document.getElementById('takerFee').value=s.taker;
+    if(s.conf!=null)  document.getElementById('minConf').value=s.conf;
+  }catch(e){}
+  updateFeeDisplay();
+}
+function saveSettings(){
+  try{
+    localStorage.setItem('wave_v4',JSON.stringify({
+      pair:document.getElementById('pairSelect').value,
+      maker:document.getElementById('makerFee').value,
+      taker:document.getElementById('takerFee').value,
+      conf:document.getElementById('minConf').value,
+    }));
+  }catch(e){}
+}
+function updateFeeDisplay(){
+  const rt=(parseFloat(document.getElementById('makerFee').value)||0)
+          +(parseFloat(document.getElementById('takerFee').value)||0);
+  document.getElementById('rtFee').textContent=rt.toFixed(2)+'%';
+  document.getElementById('needMove').textContent=(1+rt).toFixed(2)+'%';
+}
+function toggleSettings(){
+  const b=document.getElementById('sbody');
+  const open=b.classList.toggle('open');
+  document.getElementById('sarrow').textContent=open?'▴':'▾';
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROGRESS LOG
+// ═══════════════════════════════════════════════════════
+let logEl=null;
+function initLog(){
+  document.getElementById('scroll').innerHTML=
+    `<div class="plog" id="plog"><div class="plog-title">Running analysis…</div></div>`;
+  logEl=document.getElementById('plog');
+}
+function log(icon,text,val='',err=false){
+  if(!logEl)return;
+  const d=document.createElement('div');d.className='ll';
+  d.innerHTML=`<span class="li">${icon}</span><span class="lt">${text}</span>`
+    +`<span class="${err?'le':'lv'}">${val}</span>`;
+  logEl.appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function replaceLog(icon,text,val='',err=false){
+  if(!logEl)return;
+  const ls=logEl.querySelectorAll('.ll');
+  const l=ls[ls.length-1];if(!l)return;
+  l.querySelector('.li').textContent=icon;
+  l.querySelector('.lt').textContent=text;
+  const v=l.querySelector('.lv,.le');
+  if(v){v.textContent=val;v.className=err?'le':'lv';}
+}
+
+// ═══════════════════════════════════════════════════════
+//  FETCH
+// ═══════════════════════════════════════════════════════
+async function fetchCandles(symbol,interval,limit){
+  const url=`${API}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),TIMEOUT);
+  try{
+    const res=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(t);
+    if(!res.ok){const b=await res.text().catch(()=>'');throw new Error(`HTTP ${res.status}${b?': '+b.slice(0,60):''}`);}
+    const raw=await res.json();
+    if(!Array.isArray(raw)||!raw.length)throw new Error('Empty response');
+    return raw.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+  }catch(e){clearTimeout(t);if(e.name==='AbortError')throw new Error('Timed out after 10s');throw e;}
+}
+
+// ═══════════════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════════════
+function deriv(a){
+  return a.map((v,i)=>{
+    if(i===0)return a[1]-a[0];
+    if(i===a.length-1)return a[i]-a[i-1];
+    return(a[i+1]-a[i-1])/2;
+  });
+}
+function buildPhysics(candles){
+  const c=candles.map(x=>x.c);
+  const vel=deriv(c),acc=deriv(vel),jrk=deriv(acc);
+  return candles.map((x,i)=>({
+    t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,v:x.v,
+    vel:x.c>0?vel[i]/x.c*100:0,
+    acc:x.c>0?acc[i]/x.c*100:0,
+    jrk:x.c>0?jrk[i]/x.c*100:0,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════
+//  KNN + ML METRICS
+// ═══════════════════════════════════════════════════════
+function makeFP(series,endIdx){
+  if(endIdx<LOOKBACK-1)return null;
+  const v=[];
+  for(let i=endIdx-LOOKBACK+1;i<=endIdx;i++)v.push(series[i].vel,series[i].acc,series[i].jrk);
+  return v;
+}
+function cosim(a,b){
+  let dot=0,aa=0,bb=0;
+  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}
+  const d=Math.sqrt(aa)*Math.sqrt(bb);
+  return d<1e-12?0:dot/d;
+}
+
+function knnFull(series,horizonMinutes,candleMinutes){
+  const n=series.length;
+  const hc=Math.round(horizonMinutes/candleMinutes);
+  const minI=LOOKBACK-1,maxI=n-1-hc;
+  if(maxI-minI<5)return null;
+  const curFP=makeFP(series,n-1);
+  if(!curFP)return null;
+
+  // Build candidate pool
+  const pool=[];
+  for(let i=minI;i<=maxI;i++){
+    const f=makeFP(series,i);if(!f)continue;
+    const sim=cosim(curFP,f);
+    const recency=maxI>minI?(i-minI)/(maxI-minI):1;
+    const rw=Math.exp(-(1-recency)/DECAY);
+    const base=series[i].c;
+    let hit=false;
+    for(let f2=1;f2<=hc;f2++){if(i+f2<n&&series[i+f2].c>=base*1.01){hit=true;break;}}
+    pool.push({sim,rw,hit,wt:sim*rw,i});
+  }
+  if(!pool.length)return null;
+  pool.sort((a,b)=>b.wt-a.wt);
+  const neighbours=pool.slice(0,Math.min(K,pool.length));
+
+  // Weighted confidence
+  let wH=0,wT=0;
+  for(const nb of neighbours){wT+=nb.wt;if(nb.hit)wH+=nb.wt;}
+  const confidence=wT>1e-9?wH/wT:0;
+  const avgSim=neighbours.reduce((s,nb)=>s+nb.sim,0)/neighbours.length;
+
+  // Leave-one-out ML metrics (capped at 200 evals for performance)
+  const evalSet=pool.slice(0,Math.min(200,pool.length));
+  let TP=0,FP=0,TN=0,FN=0;
+  const baseRate=pool.filter(p=>p.hit).length/pool.length;
+  for(const tgt of evalSet){
+    const peers=pool.filter(p=>p.i!==tgt.i)
+      .map(p=>({...p,ds:cosim(makeFP(series,p.i)||[],makeFP(series,tgt.i)||[])}))
+      .sort((a,b)=>b.ds-a.ds).slice(0,K);
+    if(!peers.length)continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    const predBuy=(pw>1e-9?ph/pw:0)>=0.5;
+    if(predBuy&&tgt.hit)TP++;
+    else if(predBuy&&!tgt.hit)FP++;
+    else if(!predBuy&&!tgt.hit)TN++;
+    else FN++;
+  }
+  const tot=TP+FP+TN+FN;
+  const accuracy   =tot>0?(TP+TN)/tot:null;
+  const precision  =(TP+FP)>0?TP/(TP+FP):null;
+  const recall     =(TP+FN)>0?TP/(TP+FN):null;
+  const f1         =(precision!=null&&recall!=null&&(precision+recall)>0)
+                    ?2*precision*recall/(precision+recall):null;
+  const specificity=(TN+FP)>0?TN/(TN+FP):null;
+  const mccd=Math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
+  const mcc=mccd>0?(TP*TN-FP*FN)/mccd:null;
+
+  return{confidence,n:neighbours.length,totalPool:pool.length,avgSim,
+    metrics:{accuracy,precision,recall,f1,specificity,mcc,baseRate,TP,FP,TN,FN,evalN:tot}};
+}
+
+// ═══════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════
+let busy=false;
+let seriesMap={};
+
+// ═══════════════════════════════════════════════════════
+//  MAIN ANALYSIS
+// ═══════════════════════════════════════════════════════
+async function runAnalysis(){
+  if(busy)return;
+  busy=true;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('pulse').className='pulse busy';
+
+  const symbol=document.getElementById('pairSelect').value;
+  const minConf=Math.max(.5,Math.min(.95,parseFloat(document.getElementById('minConf').value)/100||.55));
+  const maker=parseFloat(document.getElementById('makerFee').value)||0;
+  const taker=parseFloat(document.getElementById('takerFee').value)||0;
+  const rtFee=maker+taker;
+
+  initLog();
+  log('🔍',`Analyzing ${symbol}`);
+  log('📡','Source','data-api.binance.vision');
+  await tick();
+
+  seriesMap={};
+  let fetchErrors=0;
+  for(const src of SOURCES){
+    log('⏳',`Fetching ${src.label}…`);
+    try{
+      const candles=await fetchCandles(symbol,src.interval,src.limit);
+      seriesMap[src.id]=buildPhysics(candles);
+      replaceLog('✅',src.label,`${candles.length} candles`);
+    }catch(e){
+      replaceLog('❌',src.label,e.message,true);
+      fetchErrors++;
+    }
+    await tick();
+  }
+
+  if(fetchErrors===SOURCES.length){
+    log('🚫','All fetches failed','Check connection and try again',true);
+    finishRun(false);return;
+  }
+
+  // Live physics from finest available source
+  const lp=(()=>{
+    for(const id of['5m','15m','1h']){
+      const s=seriesMap[id];
+      if(s&&s.length){const l=s[s.length-1];return{price:l.c,vel:l.vel,acc:l.acc,jrk:l.jrk,src:id};}
+    }
+    return null;
+  })();
+  log('⚡','Live physics',lp?`$${lp.price.toLocaleString(undefined,{maximumFractionDigits:2})} via ${lp.src}`:'unavailable');
+  await tick();
+
+  log('🧠','Running KNN + ML cross-validation…',`K=${K}, lookback=${LOOKBACK} candles`);
+  await tick();
+
+  // Horizon results
+  const hResults=[];
+  for(const hz of HORIZONS){
+    const srcR=[];
+    for(const sid of hz.srcIds){
+      const s=seriesMap[sid];if(!s)continue;
+      const src=SOURCES.find(x=>x.id===sid);
+      const r=knnFull(s,hz.minutes,src.minutes);
+      if(r)srcR.push({srcId:sid,...r});
+    }
+    let conf=null,nn=0,tp=0;
+    if(srcR.length){
+      let ws=0,wc=0;
+      for(const r of srcR){const w=r.totalPool*r.avgSim;wc+=r.confidence*w;ws+=w;nn=Math.max(nn,r.n);tp+=r.totalPool;}
+      conf=ws>1e-9?wc/ws:null;
+    }
+    hResults.push({hz,confidence:conf,n:nn,totalPool:tp,srcResults:srcR});
+    const tier=conf!=null&&conf>=minConf?'▲ BUY':'—';
+    log(conf!=null&&conf>=minConf?'🟢':'⚪',`${hz.label} horizon`,
+        conf!=null?`${(conf*100).toFixed(0)}% · ${tier}`:'N/A');
+    await tick();
+  }
+
+  // Best signal
+  const valid=hResults.filter(r=>r.confidence!=null&&r.n>=5);
+  const triggered=valid.filter(r=>r.confidence>=minConf);
+  const best=triggered.length?triggered.reduce((a,b)=>a.confidence>b.confidence?a:b):null;
+
+  if(best){
+    log('🎯','BUY signal confirmed',`${best.hz.label} · ${(best.confidence*100).toFixed(0)}% confidence`);
+    triggerNotif(symbol,best);
+  }else{
+    log('⏸','No BUY signal',`threshold ${(minConf*100).toFixed(0)}%`);
+  }
+
+  await tick();
+  renderAll({symbol,lp,hResults,best,minConf,rtFee,fetchErrors});
+  finishRun(true);
+}
+
+function finishRun(ok){
+  busy=false;
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('pulse').className=ok?'pulse live':'pulse err';
+  document.getElementById('lastTs').textContent=new Date().toLocaleTimeString();
+  saveSettings();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function fp(v){return(v>=0?'+':'')+v.toFixed(4)+'%';}
+function fc(v){return v>0?'pos':v<0?'neg':'neu';}
+function mfmt(v){return v===null?'—':(v*100).toFixed(1)+'%';}
+function mcls(v,g=0.6,ok=0.5){
+  if(v===null)return'mna';if(v>=g)return'mhi';if(v>=ok)return'mmid';return'mlo';
+}
+
+function renderAll({symbol,lp,hResults,best,minConf,rtFee,fetchErrors}){
+  let h='';
+  const isBuy=!!best;
+
+  // ── 1. Live physics strip ──
+  if(lp){
+    h+=`<div class="sec">Live Physics — ${lp.src} · ${symbol}</div>
+    <div class="phys-strip">
+      <div class="pc"><div class="pc-lbl">Price</div>
+        <div class="pc-val neu">$${lp.price.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="pc-sub">current close</div></div>
+      <div class="pc"><div class="pc-lbl">⚡ Velocity</div>
+        <div class="pc-val ${fc(lp.vel)}">${fp(lp.vel)}</div>
+        <div class="pc-sub">rate of price change</div></div>
+      <div class="pc"><div class="pc-lbl">🚀 Acceleration</div>
+        <div class="pc-val ${fc(lp.acc)}">${fp(lp.acc)}</div>
+        <div class="pc-sub">velocity speeding up?</div></div>
+      <div class="pc"><div class="pc-lbl">⚙️ Jerk</div>
+        <div class="pc-val ${fc(lp.jrk)}">${fp(lp.jrk)}</div>
+        <div class="pc-sub">conviction shifting?</div></div>
+    </div>`;
+  }
+
+  // ── 2. Per-timeframe momentum cards (original 2×2 style) ──
+  h+=`<div class="sec">Momentum by Timeframe</div><div class="tf-grid">`;
+  for(const tfid of LIVE_TF){
+    const s=seriesMap[tfid];
+    const src=SOURCES.find(x=>x.id===tfid);
+    if(!s||s.length<2){
+      h+=`<div class="tf-card signal-hold">
+        <div class="tf-head"><div class="tf-label">${tfid}</div>
+          <div class="sig-badge hold">No data</div></div>
+        <div style="color:var(--red);font-size:.7rem">Failed to load</div>
+      </div>`;
+      continue;
+    }
+    const last=s[s.length-1],prev=s[s.length-2];
+    const chgPct=((last.c-prev.c)/prev.c)*100;
+    const chgDir=chgPct>=0;
+
+    // Momentum score from live V/A/J (same as original analyzer)
+    const score=last.vel*0.5+last.acc*0.35+last.jrk*0.15;
+    const volR=(()=>{
+      const vols=s.slice(-15).map(x=>x.v);
+      const r=vols.slice(-5).reduce((a,b)=>a+b,0)/5;
+      const p=vols.slice(0,10).reduce((a,b)=>a+b,0)/10;
+      return p>0?r/p:1;
+    })();
+    const signal=score>rtFee&&volR>=0.8?'buy':score<-rtFee&&volR>=0.8?'sell':'hold';
+    const barPct=Math.min(100,Math.max(0,((score+2)/4)*100));
+    const barColor=signal==='buy'?'var(--green)':signal==='sell'?'var(--red)':'var(--dim)';
+
+    h+=`<div class="tf-card signal-${signal}">
+      <div class="tf-head">
+        <div class="tf-label">${tfid}</div>
+        <div class="sig-badge ${signal}">${signal==='buy'?'▲ BUY':signal==='sell'?'▼ SELL':'— HOLD'}</div>
+      </div>
+      <div class="tf-price">
+        <div class="tf-price-val">$${last.c.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="tf-chg ${chgDir?'pos':'neg'}">${(chgDir?'+':'')+chgPct.toFixed(3)}%</div>
+      </div>
+      <div class="tf-metrics">
+        <div class="mrow"><span class="mk">⚡ Velocity</span><span class="mv ${fc(last.vel)}">${fp(last.vel)}</span></div>
+        <div class="mrow"><span class="mk">🚀 Acceleration</span><span class="mv ${fc(last.acc)}">${fp(last.acc)}</span></div>
+        <div class="mrow"><span class="mk">⚙️ Jerk</span><span class="mv ${fc(last.jrk)}">${fp(last.jrk)}</span></div>
+        <div class="mrow"><span class="mk">📊 Volume ratio</span>
+          <span class="mv ${volR>=1?'pos':volR<0.8?'neg':'neu'}">${volR.toFixed(2)}×</span></div>
+      </div>
+      <div class="score-wrap">
+        <div class="mrow"><span class="mk">Momentum score</span>
+          <span class="mv" style="color:${barColor}">${fp(score)}</span></div>
+        <div class="score-track"><div class="score-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+      </div>
+    </div>`;
+  }
+  h+=`</div>`;
+
+  // ── 3. KNN prediction horizon cards ──
+  h+=`<div class="sec">KNN Prediction Horizons — target +1%</div><div class="hgrid">`;
+  for(const r of hResults){
+    const c=r.confidence;
+    const pp=c!=null?(c*100).toFixed(0):null;
+    const tier=c===null?'none':c>=minConf?'hi':c>=minConf*.85?'mid':'lo';
+    const bc={hi:'var(--green)',mid:'var(--gold)',lo:'var(--dim)',none:'var(--dim)'}[tier];
+    const bw=c!=null?Math.round(c*100):0;
+    const sig=tier==='hi'?'▲ BUY':tier==='mid'?'↗ Close':'— Wait';
+    const sc=tier==='hi'?'pos':tier==='mid'?'warn':'neu';
+    h+=`<div class="hcard ${tier}">
+      <div class="hcard-top">
+        <div class="hlabel">${r.hz.label}</div>
+        <div class="cbadge ${tier}">${pp!=null?pp+'%':'N/A'}</div>
+      </div>
+      <div class="btrack"><div class="bfill" style="width:${bw}%;background:${bc}"></div></div>
+      <div class="srow2"><span class="sk">Confidence</span><span class="sv ${sc}">${pp!=null?pp+'%':'No data'}</span></div>
+      <div class="srow2"><span class="sk">Neighbours K</span><span class="sv neu">${r.n}</span></div>
+      <div class="srow2"><span class="sk">History pool</span><span class="sv neu">${r.totalPool} setups</span></div>
+      <div class="srow2"><span class="sk">Signal</span><span class="sv ${sc}">${sig}</span></div>
+      ${r.srcResults.length?`<div class="srcdiv">${r.srcResults.map(sr=>`<div class="srcline">${sr.srcId}: <b>${(sr.confidence*100).toFixed(0)}%</b> · sim ${sr.avgSim.toFixed(2)} · pool ${sr.totalPool}</div>`).join('')}</div>`:''}
+    </div>`;
+  }
+  h+=`</div>`;
+
+  // ── 4. Consensus summary card (original style) ──
+  h+=`<div class="consensus ${isBuy?'buy':'hold'}">
+    <div class="cs-eye">Multi-Timeframe Consensus · ${symbol}</div>
+    <div class="cs-sig ${isBuy?'buy':'hold'}">${isBuy?'▲ BUY':'— HOLD / WAIT'}</div>
+    <div class="cs-mini-grid">`;
+  for(const r of hResults){
+    const tier=r.confidence!=null&&r.confidence>=minConf?'hi':r.confidence!=null&&r.confidence>=minConf*.85?'mid':'lo';
+    const sc={hi:'var(--green2)',mid:'var(--gold)',lo:'var(--muted)'}[tier];
+    const sig=tier==='hi'?'▲ BUY':tier==='mid'?'↗':'—';
+    h+=`<div class="cs-cell">
+      <div class="cs-cell-tf">${r.hz.label}</div>
+      <div class="cs-cell-sig" style="color:${sc}">${sig}</div>
+    </div>`;
+  }
+  h+=`</div>`;
+  if(isBuy){
+    const cp=(best.confidence*100).toFixed(0);
+    h+=`<div class="cs-detail">
+      <span class="hi"><b>${cp}% confidence</b></span> on <b>${best.hz.label}</b> horizon
+      &nbsp;·&nbsp; Target: <b>+1.00%</b>
+      &nbsp;·&nbsp; Net after fees: <span class="hi"><b>+${(1-rtFee).toFixed(2)}%</b></span><br>
+      Pattern pool: <b>${best.totalPool}</b> historical setups matched
+      &nbsp;·&nbsp; Sell target: close of <b>${best.hz.label}</b> interval
+    </div>`;
+  }else{
+    h+=`<div class="cs-detail">No horizon reached the <b>${(minConf*100).toFixed(0)}%</b> confidence threshold.
+    ${fetchErrors>0?`<span class="warn"> (${fetchErrors} source${fetchErrors>1?'s':''} failed)</span>`:''}</div>`;
+  }
+  h+=`</div>`;
+
+  // ── 5. ML metrics table ──
+  h+=`<div class="sec">Model Accuracy — Leave-One-Out Cross-Validation</div>
+  <div class="ml-panel">
+    <div class="ml-hdr">
+      <div class="ml-title">KNN Classifier Performance</div>
+      <div class="ml-sub">Evaluated on historical pool · predicting ≥+1% within each horizon</div>
+    </div>
+    <table class="ml">
+      <tr><th>Horizon</th><th>Accuracy</th><th>Precision</th><th>Recall</th>
+          <th>F1</th><th>Specificity</th><th>MCC</th><th>Base Rate</th><th>N</th></tr>`;
+  for(const r of hResults){
+    const bsrc=r.srcResults.length?r.srcResults.reduce((a,b)=>a.totalPool>b.totalPool?a:b):null;
+    const m=bsrc?.metrics;
+    if(!m){h+=`<tr><td style="color:var(--blue2)">${r.hz.label}</td><td colspan="8" class="mna">Insufficient data</td></tr>`;continue;}
+    const bar=v=>v!=null
+      ?`<span class="bari" style="width:${Math.round((v||0)*36)}px;background:${v>=.6?'var(--green)':v>=.5?'var(--gold)':'var(--red)'}"></span>`
+      :'';
+    h+=`<tr>
+      <td style="color:var(--blue2);font-weight:700">${r.hz.label}</td>
+      <td class="${mcls(m.accuracy)}">${mfmt(m.accuracy)}${bar(m.accuracy)}</td>
+      <td class="${mcls(m.precision)}">${mfmt(m.precision)}${bar(m.precision)}</td>
+      <td class="${mcls(m.recall)}">${mfmt(m.recall)}${bar(m.recall)}</td>
+      <td class="${mcls(m.f1)}">${mfmt(m.f1)}${bar(m.f1)}</td>
+      <td class="${mcls(m.specificity)}">${mfmt(m.specificity)}${bar(m.specificity)}</td>
+      <td class="${mcls(m.mcc,.3,.1)}">${m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'—'}</td>
+      <td class="mna">${mfmt(m.baseRate)}</td>
+      <td class="mna">${m.evalN}</td>
+    </tr>`;
+  }
+  h+=`</table>
+    <div class="ml-foot">
+      <b style="color:var(--muted)">Accuracy</b> overall correct predictions ·
+      <b style="color:var(--muted)">Precision</b> of BUY signals, % that were correct ·
+      <b style="color:var(--muted)">Recall</b> of real +1% moves, % that were caught ·
+      <b style="color:var(--muted)">F1</b> balance of precision &amp; recall ·
+      <b style="color:var(--muted)">MCC</b> Matthew's Correlation (−1 to +1, higher = better) ·
+      <b style="color:var(--muted)">Base Rate</b> how often +1% occurred naturally in this dataset
+    </div>
+  </div>`;
+
+  // ── 6. Candle data tables (collapsible per timeframe) ──
+  h+=`<div class="sec">Recent Candle Data — tap any timeframe to expand</div>`;
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(!s||!s.length){
+      h+=`<div class="ctable-wrap"><div class="ctable-hdr">
+        <div class="ctable-title">${src.id}</div>
+        <div class="ctable-meta" style="color:var(--red)">✗ No data</div>
+      </div></div>`;continue;
+    }
+    const recent=s.slice(-RECENT_N);
+    const last=recent[recent.length-1],prev=recent[recent.length-2];
+    const chg=prev?((last.c-prev.c)/prev.c*100):0;
+    h+=`<div class="ctable-wrap">
+      <div class="ctable-hdr" onclick="toggleTable('ct-${src.id}')">
+        <div class="ctable-title">${src.id} — ${src.label.trim()}</div>
+        <div class="ctable-meta">
+          $${last.c.toLocaleString(undefined,{maximumFractionDigits:2})}
+          &nbsp;<span class="${chg>=0?'up':'dn'}">${(chg>=0?'+':'')+chg.toFixed(3)}%</span>
+          &nbsp;· tap to expand ▾
+        </div>
+      </div>
+      <div class="ctable-body" id="ct-${src.id}">
+        <table class="ct">
+          <tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th>
+              <th>Volume</th><th>Δ%</th><th>Velocity</th><th>Accel.</th><th>Jerk</th></tr>`;
+    for(let i=0;i<recent.length;i++){
+      const row=recent[i],pr=i>0?recent[i-1]:null;
+      const dp=pr?((row.c-pr.c)/pr.c*100):0;
+      const isLive=i===recent.length-1;
+      const dt=new Date(row.t);
+      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})
+               +' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      h+=`<tr${isLive?' class="live-row"':''}>
+        <td>${ts}${isLive?' 🔴':''}</td>
+        <td class="ct-neu">${row.o.toFixed(2)}</td>
+        <td class="up">${row.h.toFixed(2)}</td>
+        <td class="dn">${row.l.toFixed(2)}</td>
+        <td class="${dp>=0?'up':'dn'}">${row.c.toFixed(2)}</td>
+        <td class="ct-neu">${row.v.toFixed(2)}</td>
+        <td class="${dp>=0?'up':'dn'}">${(dp>=0?'+':'')+dp.toFixed(3)}%</td>
+        <td class="${fc(row.vel)}">${row.vel.toFixed(4)}%</td>
+        <td class="${fc(row.acc)}">${row.acc.toFixed(4)}%</td>
+        <td class="${fc(row.jrk)}">${row.jrk.toFixed(4)}%</td>
+      </tr>`;
+    }
+    h+=`</table></div></div>`;
+  }
+
+  // ── 7. Data sources summary ──
+  h+=`<div class="sec">Data Sources</div><div class="ds-table">`;
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(s){
+      const first=new Date(s[0].t).toLocaleDateString();
+      const last2=new Date(s[s.length-1].t).toLocaleDateString();
+      h+=`<div class="ds-row"><span class="ds-k">${src.label}</span>
+          <span class="ds-ok">✓ ${s.length} candles · ${first} → ${last2}</span></div>`;
+    }else{
+      h+=`<div class="ds-row"><span class="ds-k">${src.label}</span>
+          <span class="ds-err">✗ Failed to load</span></div>`;
+    }
+  }
+  h+=`</div>`;
+
+  // ── 8. Notifications ──
+  if(Notification.permission==='default'){
+    h+=`<div class="notif-row">
+      <p>Enable alerts to be notified when a BUY signal fires while the app is open.</p>
+      <button class="notif-btn" onclick="askNotif()">Enable Alerts</button>
+    </div>`;
+  }else if(Notification.permission==='granted'){
+    h+=`<div class="notif-row"><p style="color:var(--green)">✓ Alerts active — BUY signals will trigger a notification.</p></div>`;
+  }
+
+  document.getElementById('scroll').innerHTML=h;
+}
+
+function toggleTable(id){const el=document.getElementById(id);if(el)el.classList.toggle('open');}
+
+// ═══════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+async function askNotif(){
+  const p=await Notification.requestPermission();
+  showToast(p==='granted'?'✓ Alerts enabled':'Notifications blocked in browser settings');
+  if(p!=='default')runAnalysis();
+}
+function triggerNotif(symbol,best){
+  if(Notification.permission!=='granted')return;
+  try{new Notification('WAVE — BUY Signal',{
+    body:`${symbol}: ${(best.confidence*100).toFixed(0)}% confidence · ${best.hz.label} horizon · target +1%`,
+    tag:'wave-buy',renotify:true,
+  });}catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function tick(){return new Promise(r=>setTimeout(r,20));}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOOT  — no auto-run, no timers
+// ═══════════════════════════════════════════════════════
+loadSettings();
+</script>
+</body>
+</html>
