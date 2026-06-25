@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WAVE">
+<meta name="theme-color" content="#060a10">
+<title>WAVE — Momentum Analyzer</title>
+<style>
+:root {
+  --bg:     #060a10; --bg2: #0b1018; --bg3: #101620; --bg4: #151d2a;
+  --border: #1c2a3a; --text: #d0e0f0; --muted: #445566; --dim: #2a3a4a;
+  --green: #00d97e; --green2: #00ff94; --red: #ff3355;
+  --blue: #2196f3; --blue2: #64b5f6; --gold: #ffb830;
+  --safe-top: env(safe-area-inset-top,0px); --safe-bot: env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'SF Mono',ui-monospace,monospace;font-size:13px;overscroll-behavior:none}
+.app{display:flex;flex-direction:column;height:100%}
+
+/* topbar */
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:calc(10px + var(--safe-top)) 14px 10px;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.logo{font-size:1.1rem;font-weight:700;letter-spacing:.1em;
+  background:linear-gradient(90deg,var(--green2),var(--blue2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:.58rem;color:var(--muted);letter-spacing:.1em}
+.pair-select{background:var(--bg4);color:var(--blue2);border:1px solid var(--border);
+  padding:5px 10px;border-radius:6px;font-family:inherit;font-size:.8rem;cursor:pointer}
+.status-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.pulse.live{background:var(--green);animation:glow 2s infinite}
+.pulse.err{background:var(--red)}
+.pulse.busy{width:10px;height:10px;border:2px solid var(--gold);border-top-color:transparent;
+  border-radius:50%;background:transparent;animation:spin .7s linear infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 #00d97e55}50%{box-shadow:0 0 0 5px #00d97e00}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.last-ts{font-size:.65rem;color:var(--muted)}
+.run-btn{background:transparent;color:var(--green);border:1px solid var(--green);
+  padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.8rem}
+.run-btn:disabled{opacity:.4;cursor:default}
+
+/* settings */
+.settings{background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.stoggle{width:100%;background:none;border:none;color:var(--muted);font-family:inherit;
+  font-size:.7rem;padding:7px 14px;text-align:left;cursor:pointer;
+  display:flex;justify-content:space-between;letter-spacing:.05em;text-transform:uppercase}
+.stoggle:hover{color:var(--text)}
+.sbody{padding:10px 14px 12px;border-top:1px solid var(--border);
+  display:none;flex-direction:column;gap:12px}
+.sbody.open{display:flex}
+.srow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.sgrp{display:flex;flex-direction:column;gap:4px}
+.slabel{font-size:.68rem;color:var(--muted)}
+.slabel b{color:var(--text)}
+.sinput{background:var(--bg4);color:var(--gold);border:1px solid var(--border);
+  width:70px;padding:5px 8px;border-radius:5px;font-family:inherit;font-size:.8rem;text-align:right}
+.sselect{background:var(--bg4);color:var(--text);border:1px solid var(--border);
+  padding:5px 8px;border-radius:5px;font-family:inherit;font-size:.8rem;cursor:pointer}
+.sdesc{font-size:.65rem;color:var(--dim);max-width:220px;line-height:1.5}
+.ssum{padding:5px 14px 7px;font-size:.68rem;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.ssum span{color:var(--gold)}
+
+/* scroll */
+.scroll{flex:1;overflow-y:auto;padding:10px;
+  padding-bottom:calc(16px + var(--safe-bot));display:flex;flex-direction:column;gap:10px}
+
+/* progress log */
+.plog{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px}
+.plog-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.ll{font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--bg3);
+  display:flex;align-items:center;gap:8px}
+.ll:last-child{border-bottom:none}
+.li{flex-shrink:0}.lt{flex:1}.lv{color:var(--blue2);font-size:.68rem}.le{color:var(--red);font-size:.68rem}
+
+/* signal banner */
+.sbanner{border-radius:8px;padding:14px 16px}
+.sbanner.buy{background:#00d97e0f;border:1px solid var(--green)}
+.sbanner.hold{background:#44556610;border:1px solid var(--dim)}
+.sb-eye{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.sb-sig{font-size:1.6rem;font-weight:700;letter-spacing:.04em}
+.sb-sig.buy{color:var(--green2)}.sb-sig.hold{color:var(--muted)}
+.sb-det{font-size:.72rem;color:var(--muted);margin-top:6px;line-height:1.8}
+.sb-det b{color:var(--text)}.hi{color:var(--green2)}.warn{color:var(--gold)}
+
+/* physics strip — 4 col */
+.phys-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 10px}
+.pc-lbl{font-size:.62rem;color:var(--muted);margin-bottom:3px}
+.pc-val{font-size:.88rem;font-weight:700}
+.pc-sub{font-size:.6rem;color:var(--dim);margin-top:2px}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--text)}
+
+/* section label */
+.sec{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;padding:2px 0}
+
+/* horizon cards */
+.hgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:560px){.hgrid{grid-template-columns:repeat(3,1fr)}}
+.hcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px}
+.hcard.hi{border-color:var(--green);box-shadow:0 0 12px #00d97e18}
+.hcard.mid{border-color:var(--gold)}
+.hcard.lo,.hcard.none{border-color:var(--border)}
+.hcard.none{opacity:.5}
+.hcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.hlabel{color:var(--blue2);font-size:.9rem;font-weight:700}
+.cbadge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:3px}
+.cbadge.hi{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.cbadge.mid{background:#ffb83018;color:var(--gold);border:1px solid var(--gold)}
+.cbadge.lo,.cbadge.none{color:var(--muted);border:1px solid var(--dim)}
+.btrack{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.bfill{height:100%;border-radius:2px;transition:width .5s}
+.srow2{display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:2px}
+.sk{font-size:.65rem;color:var(--muted)}.sv{font-size:.7rem}
+.srcdiv{margin-top:5px;padding-top:5px;border-top:1px solid var(--bg3)}
+.srcline{font-size:.62rem;color:var(--muted)}
+
+/* ML metrics table */
+.ml-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ml-header{padding:10px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center}
+.ml-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ml-sub{font-size:.65rem;color:var(--dim)}
+table.ml{width:100%;border-collapse:collapse;font-size:.7rem}
+table.ml th{background:var(--bg3);color:var(--muted);padding:6px 10px;text-align:left;
+  font-weight:normal;font-size:.65rem;text-transform:uppercase;letter-spacing:.05em}
+table.ml td{padding:6px 10px;border-bottom:1px solid var(--bg3)}
+table.ml tr:last-child td{border-bottom:none}
+table.ml tr:hover td{background:var(--bg3)}
+.bar-inline{display:inline-block;height:3px;border-radius:2px;vertical-align:middle;margin-left:6px}
+.metric-hi{color:var(--green)}.metric-mid{color:var(--gold)}.metric-lo{color:var(--red)}
+.metric-na{color:var(--dim)}
+
+/* candle data table — per timeframe */
+.ctable-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ctable-header{padding:8px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.ctable-header:hover{background:var(--bg3)}
+.ctable-title{font-size:.72rem;color:var(--blue2);font-weight:700}
+.ctable-meta{font-size:.65rem;color:var(--muted)}
+.ctable-body{display:none;overflow-x:auto}
+.ctable-body.open{display:block}
+table.ct{width:100%;border-collapse:collapse;font-size:.68rem;min-width:520px}
+table.ct th{background:var(--bg3);color:var(--muted);padding:5px 8px;text-align:right;
+  font-weight:normal;font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+table.ct th:first-child{text-align:left}
+table.ct td{padding:5px 8px;border-bottom:1px solid var(--bg3);text-align:right;white-space:nowrap}
+table.ct td:first-child{text-align:left;color:var(--muted)}
+table.ct tr:last-child td{border-bottom:none}
+table.ct tr.live-row td{background:#00d97e08}
+.ct-up{color:var(--green)}.ct-dn{color:var(--red)}.ct-neu{color:var(--text)}
+
+/* data sources */
+.ds-table{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ds-row{display:flex;justify-content:space-between;align-items:center;
+  padding:7px 12px;border-bottom:1px solid var(--bg3);font-size:.72rem}
+.ds-row:last-child{border-bottom:none}
+.ds-k{color:var(--muted)}.ds-ok{color:var(--green)}.ds-err{color:var(--red)}
+
+/* notif */
+.notif-row{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.notif-row p{font-size:.7rem;color:var(--muted);flex:1;min-width:160px;line-height:1.5}
+.notif-btn{background:var(--bg4);color:var(--blue2);border:1px solid var(--blue);
+  padding:5px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:.75rem}
+
+/* toast */
+.toast{position:fixed;bottom:calc(20px + var(--safe-bot));left:50%;transform:translateX(-50%);
+  background:var(--bg2);border:1px solid var(--green);color:var(--green2);
+  padding:7px 18px;border-radius:20px;font-size:.78rem;white-space:nowrap;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+
+.empty-hint{color:var(--muted);font-size:.8rem;text-align:center;padding:40px 20px;line-height:1.8}
+.empty-hint b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div>
+    <div class="logo">WAVE</div>
+    <div class="logo-sub">MOMENTUM ANALYZER</div>
+  </div>
+  <select class="pair-select" id="pairSelect" onchange="saveSettings()">
+    <option value="BTCUSDT">BTC / USDT</option>
+    <option value="ETHUSDT">ETH / USDT</option>
+    <option value="SOLUSDT">SOL / USDT</option>
+    <option value="XRPUSDT">XRP / USDT</option>
+    <option value="BNBUSDT">BNB / USDT</option>
+  </select>
+  <div class="status-wrap">
+    <div class="pulse" id="pulse"></div>
+    <div class="last-ts" id="lastTs">—</div>
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">↻ Analyze</button>
+  </div>
+</div>
+
+<div class="settings">
+  <button class="stoggle" onclick="toggleSettings()" id="stoggle">
+    <span>⚙ Settings</span><span id="sarrow">▾</span>
+  </button>
+  <div class="sbody" id="sbody">
+    <div class="srow">
+      <div class="sgrp">
+        <div class="slabel"><b>Maker fee %</b></div>
+        <input class="sinput" type="number" id="makerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Fee for limit orders that sit on the book. Typically 0.08–0.10%.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Taker fee %</b></div>
+        <input class="sinput" type="number" id="takerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Fee for market orders that fill immediately. Usually same as maker.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Min confidence %</b></div>
+        <input class="sinput" type="number" id="minConf" value="55" step="1" min="50" max="95" oninput="saveSettings()">
+        <div class="sdesc">BUY fires only when KNN confidence exceeds this. 55% = more signals, 70% = selective.</div>
+      </div>
+    </div>
+  </div>
+  <div class="ssum">
+    Round-trip fee: <span id="rtFee">0.20%</span>
+    &nbsp;·&nbsp; Min profitable move: <span id="needMove">1.20%</span>
+    &nbsp;·&nbsp; Refresh: manual only — tap ↻ when ready
+  </div>
+</div>
+
+<div class="scroll" id="scroll">
+  <div class="empty-hint">
+    Select a coin pair above, then tap <b>↻ Analyze</b>.<br><br>
+    Fetches up to 3 months of candle data across 5 timeframes · computes velocity, acceleration &amp; jerk per candle · runs KNN pattern match against historical setups that preceded a +1% move · reports confidence per prediction horizon.
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const API = 'https://data-api.binance.vision/api/v3/klines';
+const SOURCES = [
+  {id:'5m',  interval:'5m',  limit:1000, label:'5m  (~3.5 days)'},
+  {id:'15m', interval:'15m', limit:1000, label:'15m (~10 days)'},
+  {id:'1h',  interval:'1h',  limit:500,  label:'1h  (~21 days)'},
+  {id:'4h',  interval:'4h',  limit:180,  label:'4h  (~30 days)'},
+  {id:'1d',  interval:'1d',  limit:90,   label:'1d  (~3 months)'},
+];
+const HORIZONS = [
+  {label:'15m', minutes:15,   srcIds:['5m','15m']},
+  {label:'30m', minutes:30,   srcIds:['5m','15m']},
+  {label:'1h',  minutes:60,   srcIds:['15m','1h']},
+  {label:'6h',  minutes:360,  srcIds:['1h','4h']},
+  {label:'24h', minutes:1440, srcIds:['4h','1d']},
+];
+const CM = {'5m':5,'15m':15,'1h':60,'4h':240,'1d':1440};
+const K=10, LOOKBACK=4, DECAY=0.5, TIMEOUT=10000;
+const RECENT_N = 10; // candles shown in data tables
+
+// ═══════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem('wave_v3')||'{}');
+    if(s.pair)  document.getElementById('pairSelect').value=s.pair;
+    if(s.maker!=null) document.getElementById('makerFee').value=s.maker;
+    if(s.taker!=null) document.getElementById('takerFee').value=s.taker;
+    if(s.conf!=null)  document.getElementById('minConf').value=s.conf;
+  }catch(e){}
+  updateFeeDisplay();
+}
+function saveSettings(){
+  try{
+    localStorage.setItem('wave_v3',JSON.stringify({
+      pair: document.getElementById('pairSelect').value,
+      maker:document.getElementById('makerFee').value,
+      taker:document.getElementById('takerFee').value,
+      conf: document.getElementById('minConf').value,
+    }));
+  }catch(e){}
+}
+function updateFeeDisplay(){
+  const rt=(parseFloat(document.getElementById('makerFee').value)||0)
+          +(parseFloat(document.getElementById('takerFee').value)||0);
+  document.getElementById('rtFee').textContent=rt.toFixed(2)+'%';
+  document.getElementById('needMove').textContent=(1+rt).toFixed(2)+'%';
+}
+function toggleSettings(){
+  const b=document.getElementById('sbody');
+  const open=b.classList.toggle('open');
+  document.getElementById('sarrow').textContent=open?'▴':'▾';
+}
+
+// ═══════════════════════════════════════════
+//  PROGRESS LOG
+// ═══════════════════════════════════════════
+let logEl=null;
+function initLog(){
+  document.getElementById('scroll').innerHTML=
+    `<div class="plog" id="plog"><div class="plog-title">Running analysis…</div></div>`;
+  logEl=document.getElementById('plog');
+}
+function log(icon,text,val='',err=false){
+  if(!logEl)return;
+  const d=document.createElement('div');d.className='ll';
+  d.innerHTML=`<span class="li">${icon}</span><span class="lt">${text}</span><span class="${err?'le':'lv'}">${val}</span>`;
+  logEl.appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function replaceLog(icon,text,val='',err=false){
+  if(!logEl)return;
+  const ls=logEl.querySelectorAll('.ll');
+  const l=ls[ls.length-1];
+  if(!l)return;
+  l.querySelector('.li').textContent=icon;
+  l.querySelector('.lt').textContent=text;
+  const v=l.querySelector('.lv,.le');
+  if(v){v.textContent=val;v.className=err?'le':'lv';}
+}
+
+// ═══════════════════════════════════════════
+//  FETCH
+// ═══════════════════════════════════════════
+async function fetchCandles(symbol,interval,limit){
+  const url=`${API}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const ctrl=new AbortController();
+  const t=setTimeout(()=>ctrl.abort(),TIMEOUT);
+  try{
+    const res=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(t);
+    if(!res.ok){const b=await res.text().catch(()=>'');throw new Error(`HTTP ${res.status}${b?': '+b.slice(0,60):''}`);}
+    const raw=await res.json();
+    if(!Array.isArray(raw)||!raw.length)throw new Error('Empty response');
+    return raw.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+  }catch(e){clearTimeout(t);if(e.name==='AbortError')throw new Error('Timed out');throw e;}
+}
+
+// ═══════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════
+function deriv(a){
+  return a.map((v,i)=>{
+    if(i===0)return a[1]-a[0];
+    if(i===a.length-1)return a[i]-a[i-1];
+    return(a[i+1]-a[i-1])/2;
+  });
+}
+function buildPhysics(candles){
+  const c=candles.map(x=>x.c);
+  const vel=deriv(c),acc=deriv(vel),jrk=deriv(acc);
+  return candles.map((x,i)=>({
+    t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,v:x.v,
+    vel:x.c>0?vel[i]/x.c*100:0,
+    acc:x.c>0?acc[i]/x.c*100:0,
+    jrk:x.c>0?jrk[i]/x.c*100:0,
+  }));
+}
+
+// ═══════════════════════════════════════════
+//  KNN  +  ML METRICS  (leave-one-out eval)
+// ═══════════════════════════════════════════
+function fp(series,endIdx){
+  if(endIdx<LOOKBACK-1)return null;
+  const v=[];
+  for(let i=endIdx-LOOKBACK+1;i<=endIdx;i++) v.push(series[i].vel,series[i].acc,series[i].jrk);
+  return v;
+}
+function cosim(a,b){
+  let dot=0,aa=0,bb=0;
+  for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}
+  const d=Math.sqrt(aa)*Math.sqrt(bb);
+  return d<1e-12?0:dot/d;
+}
+
+function knnFull(series, horizonMinutes, candleMinutes){
+  const n=series.length;
+  const hc=Math.round(horizonMinutes/candleMinutes);
+  const minI=LOOKBACK-1, maxI=n-1-hc;
+  if(maxI-minI<5)return null;
+
+  const curFP=fp(series,n-1);
+  if(!curFP)return null;
+
+  // Build pool with outcomes
+  const pool=[];
+  for(let i=minI;i<=maxI;i++){
+    const f=fp(series,i);if(!f)continue;
+    const sim=cosim(curFP,f);
+    const recency=maxI>minI?(i-minI)/(maxI-minI):1;
+    const rw=Math.exp(-(1-recency)/DECAY);
+    const base=series[i].c;
+    let hit=false;
+    for(let f2=1;f2<=hc;f2++){
+      if(i+f2<n&&series[i+f2].c>=base*1.01){hit=true;break;}
+    }
+    pool.push({sim,rw,hit,wt:sim*rw,i});
+  }
+  if(!pool.length)return null;
+
+  pool.sort((a,b)=>b.wt-a.wt);
+  const neighbours=pool.slice(0,Math.min(K,pool.length));
+
+  // Weighted confidence (prediction)
+  let wH=0,wT=0;
+  for(const nb of neighbours){wT+=nb.wt;if(nb.hit)wH+=nb.wt;}
+  const confidence=wT>1e-9?wH/wT:0;
+  const avgSim=neighbours.reduce((s,n)=>s+n.sim,0)/neighbours.length;
+
+  // ── ML Metrics via leave-one-out cross-validation on the pool ──
+  // For each point in the pool, predict using its own K nearest neighbours
+  // (excluding itself), then compare to actual outcome.
+  const evalSet=pool.slice(0,Math.min(200,pool.length)); // cap for performance
+  let TP=0,FP=0,TN=0,FN=0;
+  const allOutcomes=pool.map(p=>p.hit);
+  const baseRate=allOutcomes.filter(Boolean).length/allOutcomes.length;
+
+  for(const target of evalSet){
+    // neighbours for this target (exclude itself)
+    const peers=pool.filter(p=>p.i!==target.i)
+      .map(p=>({...p, distSim:cosim(fp(series,p.i)||[],fp(series,target.i)||[])}))
+      .sort((a,b)=>b.distSim-a.distSim)
+      .slice(0,K);
+    if(!peers.length)continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    const pred=pw>1e-9?ph/pw:0;
+    const predBuy=pred>=0.5;
+    const actual=target.hit;
+    if(predBuy&&actual)TP++;
+    else if(predBuy&&!actual)FP++;
+    else if(!predBuy&&!actual)TN++;
+    else FN++;
+  }
+  const total=TP+FP+TN+FN;
+  const accuracy  = total>0?(TP+TN)/total:null;
+  const precision = (TP+FP)>0?TP/(TP+FP):null;
+  const recall    = (TP+FN)>0?TP/(TP+FN):null;
+  const f1        = (precision!==null&&recall!==null&&(precision+recall)>0)
+                    ? 2*precision*recall/(precision+recall):null;
+  // Specificity = TN/(TN+FP)
+  const specificity=(TN+FP)>0?TN/(TN+FP):null;
+  // Matthew's Correlation Coefficient
+  const mcc_denom=Math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
+  const mcc=mcc_denom>0?(TP*TN-FP*FN)/mcc_denom:null;
+
+  return{
+    confidence, n:neighbours.length, totalPool:pool.length, avgSim,
+    neighbours,
+    metrics:{accuracy,precision,recall,f1,specificity,mcc,baseRate,TP,FP,TN,FN,evalN:total},
+  };
+}
+
+// ═══════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════
+let busy=false;
+let seriesMap={};
+
+// ═══════════════════════════════════════════
+//  MAIN
+// ═══════════════════════════════════════════
+async function runAnalysis(){
+  if(busy)return;
+  busy=true;
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('pulse').className='pulse busy';
+
+  const symbol=document.getElementById('pairSelect').value;
+  const minConf=Math.max(.5,Math.min(.95,parseFloat(document.getElementById('minConf').value)/100||.55));
+  const maker=parseFloat(document.getElementById('makerFee').value)||0;
+  const taker=parseFloat(document.getElementById('takerFee').value)||0;
+  const rtFee=maker+taker;
+
+  initLog();
+  log('🔍',`Analyzing ${symbol}`,'');
+  log('📡','Source','data-api.binance.vision');
+  await tick();
+
+  seriesMap={};
+  let fetchErrors=0;
+  for(const src of SOURCES){
+    log('⏳',`Fetching ${src.label}…`,'');
+    try{
+      const candles=await fetchCandles(symbol,src.interval,src.limit);
+      seriesMap[src.id]=buildPhysics(candles);
+      replaceLog('✅',src.label,`${candles.length} candles`);
+    }catch(e){
+      replaceLog('❌',src.label,e.message,true);
+      fetchErrors++;
+    }
+    await tick();
+  }
+
+  if(fetchErrors===SOURCES.length){
+    log('🚫','All fetches failed','Check connection',true);
+    finishRun(false);return;
+  }
+
+  // Live physics
+  const lp=(()=>{
+    for(const id of['5m','15m','1h']){
+      const s=seriesMap[id];
+      if(s&&s.length){const l=s[s.length-1];return{price:l.c,vel:l.vel,acc:l.acc,jrk:l.jrk,src:id};}
+    }
+    return null;
+  })();
+  log('⚡','Live physics',lp?`$${lp.price.toLocaleString(undefined,{maximumFractionDigits:2})} via ${lp.src}`:'unavailable');
+  await tick();
+
+  log('🧠','Running KNN + ML metrics…',`K=${K}, lookback=${LOOKBACK} candles`);
+  await tick();
+
+  const hResults=[];
+  for(const hz of HORIZONS){
+    const srcR=[];
+    for(const sid of hz.srcIds){
+      const s=seriesMap[sid];if(!s)continue;
+      const r=knnFull(s,hz.minutes,CM[sid]);
+      if(r)srcR.push({srcId:sid,...r});
+    }
+    let conf=null,nn=0,tp=0;
+    if(srcR.length){
+      let ws=0,wc=0;
+      for(const r of srcR){const w=r.totalPool*r.avgSim;wc+=r.confidence*w;ws+=w;nn=Math.max(nn,r.n);tp+=r.totalPool;}
+      conf=ws>1e-9?wc/ws:null;
+    }
+    hResults.push({hz,confidence:conf,n:nn,totalPool:tp,srcResults:srcR});
+    const tier=conf!==null&&conf>=minConf?'▲ BUY':'—';
+    log(conf!==null&&conf>=minConf?'🟢':'⚪',`${hz.label} horizon`,
+        conf!==null?`${(conf*100).toFixed(0)}% · ${tier}`:'N/A');
+    await tick();
+  }
+
+  const valid=hResults.filter(r=>r.confidence!==null&&r.n>=5);
+  const triggered=valid.filter(r=>r.confidence>=minConf);
+  const best=triggered.length?triggered.reduce((a,b)=>a.confidence>b.confidence?a:b):null;
+
+  if(best){
+    log('🎯','BUY signal',`${best.hz.label} · ${(best.confidence*100).toFixed(0)}% confidence`);
+    triggerNotif(symbol,best);
+  }else{
+    log('⏸','No BUY signal',`threshold ${(minConf*100).toFixed(0)}%`);
+  }
+
+  await tick();
+  renderAll({symbol,lp,hResults,best,minConf,rtFee,fetchErrors});
+  finishRun(true);
+}
+
+function finishRun(ok){
+  busy=false;
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('pulse').className=ok?'pulse live':'pulse err';
+  document.getElementById('lastTs').textContent=new Date().toLocaleTimeString();
+  saveSettings();
+}
+
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function pct(v){return(v>=0?'+':'')+v.toFixed(4)+'%';}
+function fc(v){return v>0?'pos':v<0?'neg':'neu';}
+function mfmt(v){return v===null?'—':(v*100).toFixed(1)+'%';}
+function mclass(v,good=0.6,ok=0.5){
+  if(v===null)return'metric-na';
+  if(v>=good)return'metric-hi';
+  if(v>=ok)return'metric-mid';
+  return'metric-lo';
+}
+
+function renderAll({symbol,lp,hResults,best,minConf,rtFee,fetchErrors}){
+  let h='';
+
+  // ── Signal banner ──
+  const isBuy=!!best;
+  if(isBuy){
+    const cp=(best.confidence*100).toFixed(0);
+    h+=`<div class="sbanner buy">
+      <div class="sb-eye">Consensus · ${symbol}</div>
+      <div class="sb-sig buy">▲ BUY</div>
+      <div class="sb-det">
+        <span class="hi"><b>${cp}% confidence</b></span> on <b>${best.hz.label}</b> horizon
+        &nbsp;·&nbsp; Target: <b>+1.00%</b>
+        &nbsp;·&nbsp; Net after fees: <b class="hi">+${(1-rtFee).toFixed(2)}%</b><br>
+        Pattern pool: <b>${best.totalPool}</b> historical setups
+        &nbsp;·&nbsp; Auto-sell target: close of <b>${best.hz.label}</b> interval
+      </div>
+    </div>`;
+  }else{
+    h+=`<div class="sbanner hold">
+      <div class="sb-eye">Consensus · ${symbol}</div>
+      <div class="sb-sig hold">— HOLD / WAIT</div>
+      <div class="sb-det">No horizon reached the <b>${(minConf*100).toFixed(0)}%</b> confidence threshold.
+      ${fetchErrors>0?`<span class="warn"> (${fetchErrors} source${fetchErrors>1?'s':''} failed)</span>`:''}</div>
+    </div>`;
+  }
+
+  // ── Live physics ──
+  if(lp){
+    h+=`<div class="sec">Live Physics — ${lp.src} candles · ${symbol}</div>
+    <div class="phys-strip">
+      <div class="pc"><div class="pc-lbl">Price</div>
+        <div class="pc-val neu">$${lp.price.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="pc-sub">current close</div></div>
+      <div class="pc"><div class="pc-lbl">⚡ Velocity</div>
+        <div class="pc-val ${fc(lp.vel)}">${pct(lp.vel)}</div>
+        <div class="pc-sub">%/candle — speed of change</div></div>
+      <div class="pc"><div class="pc-lbl">🚀 Acceleration</div>
+        <div class="pc-val ${fc(lp.acc)}">${pct(lp.acc)}</div>
+        <div class="pc-sub">%/candle² — speeding up?</div></div>
+      <div class="pc"><div class="pc-lbl">⚙️ Jerk</div>
+        <div class="pc-val ${fc(lp.jrk)}">${pct(lp.jrk)}</div>
+        <div class="pc-sub">%/candle³ — conviction shift</div></div>
+    </div>`;
+  }
+
+  // ── Horizon cards ──
+  h+=`<div class="sec">Prediction Horizons — KNN Pattern Match (target +1%)</div><div class="hgrid">`;
+  for(const r of hResults){
+    const c=r.confidence;
+    const pp=c!==null?(c*100).toFixed(0):null;
+    const tier=c===null?'none':c>=minConf?'hi':c>=minConf*.85?'mid':'lo';
+    const bc={hi:'var(--green)',mid:'var(--gold)',lo:'var(--dim)',none:'var(--dim)'}[tier];
+    const bw=c!==null?Math.round(c*100):0;
+    const sig=tier==='hi'?'▲ BUY':tier==='mid'?'↗ Close':'— Wait';
+    const sc=tier==='hi'?'pos':tier==='mid'?'warn':'neu';
+    h+=`<div class="hcard ${tier}">
+      <div class="hcard-top">
+        <div class="hlabel">${r.hz.label}</div>
+        <div class="cbadge ${tier}">${pp!==null?pp+'%':'N/A'}</div>
+      </div>
+      <div class="btrack"><div class="bfill" style="width:${bw}%;background:${bc}"></div></div>
+      <div>
+        <div class="srow2"><span class="sk">Confidence</span><span class="sv ${sc}">${pp!==null?pp+'%':'No data'}</span></div>
+        <div class="srow2"><span class="sk">Neighbours K</span><span class="sv neu">${r.n}</span></div>
+        <div class="srow2"><span class="sk">History pool</span><span class="sv neu">${r.totalPool} setups</span></div>
+        <div class="srow2"><span class="sk">Signal</span><span class="sv ${sc}">${sig}</span></div>
+        ${r.srcResults.length?`<div class="srcdiv">${r.srcResults.map(s=>`<div class="srcline">${s.srcId}: <b>${(s.confidence*100).toFixed(0)}%</b> · sim ${s.avgSim.toFixed(2)} · pool ${s.totalPool}</div>`).join('')}</div>`:''}
+      </div>
+    </div>`;
+  }
+  h+=`</div>`;
+
+  // ── ML Metrics table ──
+  h+=`<div class="sec">Model Performance Metrics — Leave-One-Out Cross-Validation</div>
+  <div class="ml-panel">
+    <div class="ml-header">
+      <div class="ml-title">KNN Classifier Evaluation</div>
+      <div class="ml-sub">Predicting ≥+1% within each horizon · evaluated on historical pool</div>
+    </div>
+    <table class="ml">
+      <tr>
+        <th>Horizon</th><th>Accuracy</th><th>Precision</th><th>Recall</th>
+        <th>F1</th><th>Specificity</th><th>MCC</th><th>Base Rate</th><th>Eval N</th>
+      </tr>`;
+
+  for(const r of hResults){
+    // Aggregate metrics across sources (use highest-pool source)
+    const best_src=r.srcResults.length
+      ? r.srcResults.reduce((a,b)=>a.totalPool>b.totalPool?a:b)
+      : null;
+    const m=best_src?.metrics;
+    if(!m){
+      h+=`<tr><td>${r.hz.label}</td><td colspan="8" class="metric-na">Insufficient data</td></tr>`;
+      continue;
+    }
+    const bar=(v)=>v!==null
+      ?`<span class="bar-inline" style="width:${Math.round((v||0)*40)}px;background:${v>=0.6?'var(--green)':v>=0.5?'var(--gold)':'var(--red)'}"></span>`
+      :'';
+    h+=`<tr>
+      <td style="color:var(--blue2);font-weight:700">${r.hz.label}</td>
+      <td class="${mclass(m.accuracy)}">${mfmt(m.accuracy)}${bar(m.accuracy)}</td>
+      <td class="${mclass(m.precision)}">${mfmt(m.precision)}${bar(m.precision)}</td>
+      <td class="${mclass(m.recall)}">${mfmt(m.recall)}${bar(m.recall)}</td>
+      <td class="${mclass(m.f1)}">${mfmt(m.f1)}${bar(m.f1)}</td>
+      <td class="${mclass(m.specificity)}">${mfmt(m.specificity)}${bar(m.specificity)}</td>
+      <td class="${mclass(m.mcc,0.3,0.1)}">${m.mcc!==null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'—'}</td>
+      <td class="metric-na">${mfmt(m.baseRate)}</td>
+      <td class="metric-na">${m.evalN}</td>
+    </tr>`;
+  }
+  h+=`</table>
+    <div style="padding:8px 12px;font-size:.65rem;color:var(--dim);line-height:1.7">
+      <b style="color:var(--muted)">Accuracy</b> — overall correct predictions &nbsp;·&nbsp;
+      <b style="color:var(--muted)">Precision</b> — of BUY signals, how many were right &nbsp;·&nbsp;
+      <b style="color:var(--muted)">Recall</b> — of actual +1% moves, how many were caught &nbsp;·&nbsp;
+      <b style="color:var(--muted)">F1</b> — balance of precision &amp; recall &nbsp;·&nbsp;
+      <b style="color:var(--muted)">MCC</b> — Matthew's Correlation Coefficient (−1 to +1, higher = better) &nbsp;·&nbsp;
+      <b style="color:var(--muted)">Base Rate</b> — how often +1% naturally occurred in this data
+    </div>
+  </div>`;
+
+  // ── Candle data tables per source ──
+  h+=`<div class="sec">Recent Candle Data — Last ${RECENT_N} Candles Per Timeframe</div>`;
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(!s||!s.length){
+      h+=`<div class="ctable-wrap">
+        <div class="ctable-header" onclick="toggleTable('ct-${src.id}')">
+          <div class="ctable-title">${src.id} candles</div>
+          <div class="ctable-meta" style="color:var(--red)">✗ No data</div>
+        </div></div>`;
+      continue;
+    }
+    const recent=s.slice(-RECENT_N);
+    const last=recent[recent.length-1];
+    const prev=recent[recent.length-2];
+    const chg=prev?((last.c-prev.c)/prev.c*100):0;
+    const chgStr=(chg>=0?'+':'')+chg.toFixed(3)+'%';
+    h+=`<div class="ctable-wrap">
+      <div class="ctable-header" onclick="toggleTable('ct-${src.id}')">
+        <div class="ctable-title">${src.id} — ${src.label.trim()}</div>
+        <div class="ctable-meta">
+          $${last.c.toLocaleString(undefined,{maximumFractionDigits:2})}
+          &nbsp;<span class="${chg>=0?'ct-up':'ct-dn'}">${chgStr}</span>
+          &nbsp;· tap to expand
+        </div>
+      </div>
+      <div class="ctable-body" id="ct-${src.id}">
+        <table class="ct">
+          <tr>
+            <th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th>
+            <th>Vol</th><th>Δ%</th><th>Vel</th><th>Acc</th><th>Jerk</th>
+          </tr>`;
+    for(let i=0;i<recent.length;i++){
+      const row=recent[i];
+      const pr=i>0?recent[i-1]:null;
+      const dp=pr?((row.c-pr.c)/pr.c*100):0;
+      const isLive=i===recent.length-1;
+      const dt=new Date(row.t);
+      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      h+=`<tr${isLive?' class="live-row"':''}>
+        <td>${ts}${isLive?' 🔴':''}</td>
+        <td class="ct-neu">${row.o.toFixed(2)}</td>
+        <td class="ct-up">${row.h.toFixed(2)}</td>
+        <td class="ct-dn">${row.l.toFixed(2)}</td>
+        <td class="${dp>=0?'ct-up':'ct-dn'}">${row.c.toFixed(2)}</td>
+        <td class="ct-neu">${row.v.toFixed(2)}</td>
+        <td class="${dp>=0?'ct-up':'ct-dn'}">${(dp>=0?'+':'')+dp.toFixed(3)}%</td>
+        <td class="${fc(row.vel)}">${row.vel.toFixed(4)}%</td>
+        <td class="${fc(row.acc)}">${row.acc.toFixed(4)}%</td>
+        <td class="${fc(row.jrk)}">${row.jrk.toFixed(4)}%</td>
+      </tr>`;
+    }
+    h+=`</table></div></div>`;
+  }
+
+  // ── Data sources summary ──
+  h+=`<div class="sec">Data Sources</div><div class="ds-table">`;
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(s){
+      const first=new Date(s[0].t).toLocaleDateString();
+      const last2=new Date(s[s.length-1].t).toLocaleDateString();
+      h+=`<div class="ds-row"><span class="ds-k">${src.label}</span>
+          <span class="ds-ok">✓ ${s.length} candles · ${first} → ${last2}</span></div>`;
+    }else{
+      h+=`<div class="ds-row"><span class="ds-k">${src.label}</span>
+          <span class="ds-err">✗ Failed to load</span></div>`;
+    }
+  }
+  h+=`</div>`;
+
+  // ── Notifications ──
+  if(Notification.permission==='default'){
+    h+=`<div class="notif-row">
+      <p>Enable notifications to receive an alert when a BUY signal fires while the app is open.</p>
+      <button class="notif-btn" onclick="askNotif()">Enable Alerts</button>
+    </div>`;
+  }else if(Notification.permission==='granted'){
+    h+=`<div class="notif-row"><p style="color:var(--green)">✓ Alerts active — you'll be notified on BUY signals.</p></div>`;
+  }
+
+  document.getElementById('scroll').innerHTML=h;
+}
+
+function toggleTable(id){
+  const el=document.getElementById(id);
+  if(el)el.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════
+async function askNotif(){
+  const p=await Notification.requestPermission();
+  showToast(p==='granted'?'✓ Alerts enabled':'Notifications blocked');
+  if(p!=='default')runAnalysis();
+}
+function triggerNotif(symbol,best){
+  if(Notification.permission!=='granted')return;
+  try{new Notification('WAVE — BUY Signal',{
+    body:`${symbol}: ${(best.confidence*100).toFixed(0)}% confidence · ${best.hz.label} horizon · target +1%`,
+    tag:'wave-buy',renotify:true,
+  });}catch(e){}
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function tick(){return new Promise(r=>setTimeout(r,20));}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ═══════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════
+loadSettings();
+</script>
+</body>
+</html>
