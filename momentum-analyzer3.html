@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WAVE">
+<meta name="theme-color" content="#060a10">
+<title>WAVE — Momentum Analyzer</title>
+<style>
+:root {
+  --bg:     #060a10;
+  --bg2:    #0b1018;
+  --bg3:    #101620;
+  --bg4:    #151d2a;
+  --border: #1c2a3a;
+  --text:   #d0e0f0;
+  --muted:  #445566;
+  --dim:    #2a3a4a;
+  --green:  #00d97e;
+  --green2: #00ff94;
+  --red:    #ff3355;
+  --blue:   #2196f3;
+  --blue2:  #64b5f6;
+  --gold:   #ffb830;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'SF Mono', ui-monospace, monospace; font-size: 13px; overscroll-behavior: none; }
+
+.app { display: flex; flex-direction: column; height: 100%; }
+
+/* ── Top bar ── */
+.topbar { background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: calc(10px + var(--safe-top)) 14px 10px;
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+.logo { font-size: 1.1rem; font-weight: 700; letter-spacing: .1em;
+  background: linear-gradient(90deg, var(--green2), var(--blue2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.logo-sub { font-size: 0.58rem; color: var(--muted); letter-spacing: .1em; }
+.pair-select { background: var(--bg4); color: var(--blue2); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: 0.8rem; cursor: pointer; }
+.status-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.pulse.live { background: var(--green); animation: glow 2s infinite; }
+.pulse.err  { background: var(--red); }
+.pulse.busy { background: var(--gold); animation: spin-ring 1s linear infinite; border-radius: 0; width: 9px; height: 9px;
+  border: 2px solid var(--gold); border-top-color: transparent; border-radius: 50%; background: transparent; }
+@keyframes glow { 0%,100%{box-shadow:0 0 0 0 #00d97e55}50%{box-shadow:0 0 0 5px #00d97e00} }
+@keyframes spin-ring { to { transform: rotate(360deg); } }
+.last-ts { font-size: 0.65rem; color: var(--muted); }
+.run-btn { background: transparent; color: var(--green); border: 1px solid var(--green);
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.8rem;
+  transition: background .2s; }
+.run-btn:hover { background: #00d97e14; }
+.run-btn:disabled { opacity: .4; cursor: default; }
+
+/* ── Settings panel ── */
+.settings { background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 0; overflow: hidden; flex-shrink: 0; }
+.settings-toggle { width: 100%; background: none; border: none; color: var(--muted);
+  font-family: inherit; font-size: 0.7rem; padding: 7px 14px; text-align: left;
+  cursor: pointer; display: flex; justify-content: space-between; letter-spacing: .05em;
+  text-transform: uppercase; }
+.settings-toggle:hover { color: var(--text); }
+.settings-body { padding: 10px 14px 12px; border-top: 1px solid var(--border);
+  display: none; flex-direction: column; gap: 12px; }
+.settings-body.open { display: flex; }
+.setting-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.setting-group { display: flex; flex-direction: column; gap: 4px; }
+.setting-label { font-size: 0.68rem; color: var(--muted); }
+.setting-label b { color: var(--text); }
+.setting-input { background: var(--bg4); color: var(--gold); border: 1px solid var(--border);
+  width: 70px; padding: 5px 8px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; text-align: right; }
+.setting-select { background: var(--bg4); color: var(--text); border: 1px solid var(--border);
+  padding: 5px 8px; border-radius: 5px; font-family: inherit; font-size: 0.8rem; cursor: pointer; }
+.setting-desc { font-size: 0.65rem; color: var(--dim); max-width: 220px; line-height: 1.5; }
+.settings-summary { padding: 5px 14px 7px; font-size: 0.68rem; color: var(--muted);
+  display: flex; gap: 14px; flex-wrap: wrap; }
+.settings-summary span { color: var(--gold); }
+
+/* ── Scroll body ── */
+.scroll { flex: 1; overflow-y: auto; padding: 10px;
+  padding-bottom: calc(16px + var(--safe-bot)); display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Progress log ── */
+.progress-log { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.progress-title { font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 8px; }
+.log-line { font-size: 0.72rem; padding: 3px 0; border-bottom: 1px solid var(--bg3);
+  display: flex; align-items: center; gap: 8px; }
+.log-line:last-child { border-bottom: none; }
+.log-icon { flex-shrink: 0; }
+.log-text { flex: 1; }
+.log-val  { color: var(--blue2); font-size: 0.68rem; }
+.log-err  { color: var(--red); font-size: 0.68rem; }
+
+/* ── Signal banner ── */
+.signal-banner { border-radius: 8px; padding: 14px 16px; }
+.signal-banner.buy  { background: #00d97e0f; border: 1px solid var(--green); }
+.signal-banner.hold { background: #44556610; border: 1px solid var(--dim); }
+.sb-eyebrow { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 5px; }
+.sb-signal  { font-size: 1.6rem; font-weight: 700; letter-spacing: .04em; }
+.sb-signal.buy  { color: var(--green2); }
+.sb-signal.hold { color: var(--muted); }
+.sb-detail { font-size: 0.72rem; color: var(--muted); margin-top: 6px; line-height: 1.7; }
+.sb-detail b { color: var(--text); }
+.sb-detail .hi { color: var(--green2); }
+.sb-detail .warn { color: var(--gold); }
+
+/* ── Physics strip ── */
+.phys-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.phys-cell { background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; }
+.pc-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 3px; }
+.pc-val   { font-size: 0.88rem; font-weight: 700; }
+.pc-sub   { font-size: 0.6rem; color: var(--dim); margin-top: 2px; }
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.neu { color: var(--text); }
+
+/* ── Horizon cards ── */
+.section-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .1em; padding: 2px 2px; }
+.horizons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 560px) { .horizons-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.hcard { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 11px; }
+.hcard.tier-hi   { border-color: var(--green); box-shadow: 0 0 12px #00d97e18; }
+.hcard.tier-mid  { border-color: var(--gold); }
+.hcard.tier-lo   { border-color: var(--border); }
+.hcard.tier-none { border-color: var(--dim); opacity: .55; }
+
+.hcard-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.hcard-horizon { color: var(--blue2); font-size: 0.9rem; font-weight: 700; }
+.conf-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 3px; }
+.conf-badge.hi  { background: #00d97e18; color: var(--green2); border: 1px solid var(--green); }
+.conf-badge.mid { background: #ffb83018; color: var(--gold);   border: 1px solid var(--gold); }
+.conf-badge.lo  { background: #44556618; color: var(--muted);  border: 1px solid var(--dim); }
+.conf-badge.na  { color: var(--dim); border: 1px solid var(--dim); }
+
+.bar-track { height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+.bar-fill  { height: 100%; border-radius: 2px; transition: width .5s ease; }
+
+.hcard-stats { display: flex; flex-direction: column; gap: 3px; }
+.stat-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+.stat-k   { font-size: 0.65rem; color: var(--muted); }
+.stat-v   { font-size: 0.7rem; }
+.sources-detail { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--bg3); }
+.src-line { font-size: 0.62rem; color: var(--muted); }
+.src-line b { color: var(--dim); }
+
+/* ── Data sources table ── */
+.ds-table { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ds-row { display: flex; justify-content: space-between; align-items: center;
+  padding: 7px 12px; border-bottom: 1px solid var(--bg3); font-size: 0.72rem; }
+.ds-row:last-child { border-bottom: none; }
+.ds-key { color: var(--muted); }
+.ds-ok  { color: var(--green); }
+.ds-err { color: var(--red); }
+.ds-warn { color: var(--gold); }
+
+/* ── Notif prompt ── */
+.notif-row { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.notif-row p { font-size: 0.7rem; color: var(--muted); flex: 1; min-width: 160px; line-height: 1.5; }
+.notif-btn { background: var(--bg4); color: var(--blue2); border: 1px solid var(--blue);
+  padding: 5px 12px; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 0.75rem; }
+
+/* ── Toast ── */
+.toast { position: fixed; bottom: calc(20px + var(--safe-bot)); left: 50%;
+  transform: translateX(-50%); background: var(--bg2); border: 1px solid var(--green);
+  color: var(--green2); padding: 7px 18px; border-radius: 20px; font-size: 0.78rem;
+  white-space: nowrap; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99; }
+.toast.show { opacity: 1; }
+
+.empty-hint { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 40px 20px;
+  line-height: 1.7; }
+.empty-hint b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="logo">WAVE</div>
+    <div class="logo-sub">MOMENTUM ANALYZER</div>
+  </div>
+  <select class="pair-select" id="pairSelect" onchange="onPairChange()">
+    <option value="BTCUSDT">BTC / USDT</option>
+    <option value="ETHUSDT">ETH / USDT</option>
+    <option value="SOLUSDT">SOL / USDT</option>
+    <option value="XRPUSDT">XRP / USDT</option>
+    <option value="BNBUSDT">BNB / USDT</option>
+  </select>
+  <div class="status-wrap">
+    <div class="pulse" id="pulse"></div>
+    <div class="last-ts" id="lastTs">—</div>
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">↻ Analyze</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="settings">
+  <button class="settings-toggle" onclick="toggleSettings()" id="settingsToggle">
+    <span>⚙ Settings</span><span id="settingsArrow">▾</span>
+  </button>
+  <div class="settings-body" id="settingsBody">
+
+    <div class="setting-row">
+      <div class="setting-group">
+        <div class="setting-label"><b>Maker fee %</b></div>
+        <input class="setting-input" type="number" id="makerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="setting-desc">Fee paid when your order sits on the book (limit order). Typically 0.08–0.10%.</div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label"><b>Taker fee %</b></div>
+        <input class="setting-input" type="number" id="takerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="setting-desc">Fee paid when your order fills immediately (market order). Usually equal to or slightly above maker.</div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-group">
+        <div class="setting-label"><b>Min confidence threshold %</b></div>
+        <input class="setting-input" type="number" id="minConf" value="55" step="1" min="50" max="95" oninput="saveSettings()">
+        <div class="setting-desc">The app signals BUY only when historical pattern-match confidence exceeds this. 55% = cautious, 65% = selective. Lower = more signals, higher = fewer but stronger.</div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label"><b>Auto-refresh interval</b></div>
+        <select class="setting-select" id="autoRefresh" onchange="saveSettings();resetTimer()">
+          <option value="0">Off — manual only</option>
+          <option value="60">Every 1 minute</option>
+          <option value="300" selected>Every 5 minutes</option>
+          <option value="900">Every 15 minutes</option>
+        </select>
+        <div class="setting-desc">How often to re-fetch data and re-run the analysis automatically.</div>
+      </div>
+    </div>
+
+  </div>
+  <div class="settings-summary">
+    Round-trip fee: <span id="rtFee">0.20%</span>
+    &nbsp;·&nbsp; Min profitable move: <span id="needMove">1.20%</span>
+    &nbsp;·&nbsp; Target: +1.00% before fees
+  </div>
+</div>
+
+<!-- Scroll area -->
+<div class="scroll" id="scroll">
+  <div class="empty-hint">
+    Select a coin pair above, then tap <b>↻ Analyze</b>.<br><br>
+    The app fetches up to 3 months of candle data, computes velocity, acceleration, and jerk for each candle, then finds historical moments whose V/A/J trajectory most closely resembles <i>right now</i> — and checks whether a +1% move followed within each time horizon.
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA SOURCE  (confirmed working in diagnostic test)
+// ═══════════════════════════════════════════════════════
+const API_BASE = 'https://data-api.binance.vision/api/v3/klines';
+
+// Five candle sizes — each fetches max useful recency-bounded history
+const SOURCES = [
+  { id: '5m',  interval: '5m',  limit: 1000, label: '5m candles (~3.5 days)'  },
+  { id: '15m', interval: '15m', limit: 1000, label: '15m candles (~10 days)'  },
+  { id: '1h',  interval: '1h',  limit: 500,  label: '1h candles (~21 days)'   },
+  { id: '4h',  interval: '4h',  limit: 180,  label: '4h candles (~30 days)'   },
+  { id: '1d',  interval: '1d',  limit: 90,   label: '1d candles (~3 months)'  },
+];
+
+// Prediction horizons and which source(s) feed each
+const HORIZONS = [
+  { label: '15m',  minutes: 15,   srcIds: ['5m','15m'] },
+  { label: '30m',  minutes: 30,   srcIds: ['5m','15m'] },
+  { label: '1h',   minutes: 60,   srcIds: ['15m','1h'] },
+  { label: '6h',   minutes: 360,  srcIds: ['1h','4h']  },
+  { label: '24h',  minutes: 1440, srcIds: ['4h','1d']  },
+];
+
+const CANDLE_MINUTES = { '5m':5, '15m':15, '1h':60, '4h':240, '1d':1440 };
+const K = 10;        // nearest neighbours
+const LOOKBACK = 4;  // fingerprint depth (steps back)
+const DECAY = 0.5;   // recency decay half-life (fraction of history)
+const FETCH_TIMEOUT_MS = 10000;
+
+// ═══════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('wave_v2') || '{}');
+    if (s.pair)         document.getElementById('pairSelect').value   = s.pair;
+    if (s.maker != null) document.getElementById('makerFee').value    = s.maker;
+    if (s.taker != null) document.getElementById('takerFee').value    = s.taker;
+    if (s.conf  != null) document.getElementById('minConf').value     = s.conf;
+    if (s.auto  != null) document.getElementById('autoRefresh').value = s.auto;
+  } catch(e) {}
+  updateFeeDisplay();
+}
+function saveSettings() {
+  try {
+    localStorage.setItem('wave_v2', JSON.stringify({
+      pair:  document.getElementById('pairSelect').value,
+      maker: document.getElementById('makerFee').value,
+      taker: document.getElementById('takerFee').value,
+      conf:  document.getElementById('minConf').value,
+      auto:  document.getElementById('autoRefresh').value,
+    }));
+  } catch(e) {}
+}
+function updateFeeDisplay() {
+  const rt = (parseFloat(document.getElementById('makerFee').value)||0)
+           + (parseFloat(document.getElementById('takerFee').value)||0);
+  document.getElementById('rtFee').textContent    = rt.toFixed(2) + '%';
+  document.getElementById('needMove').textContent = (1 + rt).toFixed(2) + '%';
+}
+function toggleSettings() {
+  const body  = document.getElementById('settingsBody');
+  const arrow = document.getElementById('settingsArrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '▴' : '▾';
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROGRESS LOG (visible step-by-step feedback)
+// ═══════════════════════════════════════════════════════
+let logEl = null;
+function initLog() {
+  document.getElementById('scroll').innerHTML =
+    `<div class="progress-log" id="progressLog">
+       <div class="progress-title">Running analysis…</div>
+     </div>`;
+  logEl = document.getElementById('progressLog');
+}
+function log(icon, text, val='', isErr=false) {
+  if (!logEl) return;
+  const d = document.createElement('div');
+  d.className = 'log-line';
+  d.innerHTML = `<span class="log-icon">${icon}</span>
+    <span class="log-text">${text}</span>
+    <span class="${isErr?'log-err':'log-val'}">${val}</span>`;
+  logEl.appendChild(d);
+  // scroll log into view on mobile
+  d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ═══════════════════════════════════════════════════════
+//  FETCH  (with timeout + clear error messages)
+// ═══════════════════════════════════════════════════════
+async function fetchCandles(symbol, interval, limit) {
+  const url = `${API_BASE}?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}${body ? ': ' + body.slice(0,80) : ''}`);
+    }
+    const raw = await res.json();
+    if (!Array.isArray(raw) || raw.length === 0) throw new Error('Empty response');
+    return raw.map(k => ({
+      t: k[0], o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5],
+    }));
+  } catch(e) {
+    clearTimeout(timer);
+    if (e.name === 'AbortError') throw new Error('Request timed out after 10s');
+    throw e;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PHYSICS
+// ═══════════════════════════════════════════════════════
+function deriv(arr) {
+  return arr.map((v, i) => {
+    if (i === 0)            return arr[1] - arr[0];
+    if (i === arr.length-1) return arr[i] - arr[i-1];
+    return (arr[i+1] - arr[i-1]) / 2;
+  });
+}
+function buildPhysics(candles) {
+  const c = candles.map(x => x.c);
+  const vel = deriv(c);
+  const acc = deriv(vel);
+  const jrk = deriv(acc);
+  return candles.map((x, i) => ({
+    t: x.t, c: x.c, v: x.v,
+    vel: c[i] > 0 ? vel[i] / c[i] * 100 : 0,
+    acc: c[i] > 0 ? acc[i] / c[i] * 100 : 0,
+    jrk: c[i] > 0 ? jrk[i] / c[i] * 100 : 0,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════
+//  KNN FINGERPRINT MATCHING
+// ═══════════════════════════════════════════════════════
+function fingerprint(series, endIdx) {
+  if (endIdx < LOOKBACK - 1) return null;
+  const vec = [];
+  for (let i = endIdx - LOOKBACK + 1; i <= endIdx; i++) {
+    vec.push(series[i].vel, series[i].acc, series[i].jrk);
+  }
+  return vec;
+}
+function cosineSim(a, b) {
+  let dot=0, aa=0, bb=0;
+  for (let i=0; i<a.length; i++) { dot+=a[i]*b[i]; aa+=a[i]*a[i]; bb+=b[i]*b[i]; }
+  const d = Math.sqrt(aa)*Math.sqrt(bb);
+  return d < 1e-12 ? 0 : dot/d;
+}
+function knn(series, horizonMinutes, candleMinutes) {
+  const n = series.length;
+  const hc = Math.round(horizonMinutes / candleMinutes); // horizon in candles
+  const minIdx  = LOOKBACK - 1;
+  const maxIdx  = n - 1 - hc; // must have hc candles of future data
+
+  if (maxIdx - minIdx < 5) return null; // not enough data
+
+  const curFP = fingerprint(series, n - 1);
+  if (!curFP) return null;
+
+  // Build candidate pool
+  const pool = [];
+  for (let i = minIdx; i <= maxIdx; i++) {
+    const fp = fingerprint(series, i);
+    if (!fp) continue;
+    const sim = cosineSim(curFP, fp);
+    // Recency weight: 0=oldest → 1=most recent
+    const recency = maxIdx > minIdx ? (i - minIdx) / (maxIdx - minIdx) : 1;
+    const rw = Math.exp(-(1 - recency) / DECAY);
+    // Outcome: did price reach +1% within hc candles?
+    const base = series[i].c;
+    let hit = false;
+    for (let f = 1; f <= hc; f++) {
+      if ((i+f) < n && series[i+f].c >= base * 1.01) { hit=true; break; }
+    }
+    pool.push({ sim, rw, hit, wt: sim * rw });
+  }
+  if (pool.length === 0) return null;
+
+  // Top K by weighted similarity
+  pool.sort((a,b) => b.wt - a.wt);
+  const neighbours = pool.slice(0, Math.min(K, pool.length));
+
+  // Weighted confidence
+  let wHits=0, wTotal=0;
+  for (const nb of neighbours) { wTotal += nb.wt; if (nb.hit) wHits += nb.wt; }
+  const confidence = wTotal > 1e-9 ? wHits / wTotal : 0;
+  const avgSim = neighbours.reduce((s,n)=>s+n.sim,0) / neighbours.length;
+
+  return { confidence, n: neighbours.length, totalPool: pool.length, avgSim };
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN ANALYSIS
+// ═══════════════════════════════════════════════════════
+let busy = false;
+let autoTimer = null;
+
+async function runAnalysis() {
+  if (busy) return;
+  busy = true;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('pulse').className = 'pulse busy';
+
+  const symbol  = document.getElementById('pairSelect').value;
+  const minConf = Math.max(0.5, Math.min(0.95, parseFloat(document.getElementById('minConf').value)/100 || 0.55));
+  const maker   = parseFloat(document.getElementById('makerFee').value) || 0;
+  const taker   = parseFloat(document.getElementById('takerFee').value) || 0;
+  const rtFee   = maker + taker;
+
+  initLog();
+  log('🔍', `Analyzing ${symbol}`, '');
+  log('📡', 'Source: data-api.binance.vision', 'confirmed working');
+  await tick();
+
+  // ── Fetch all candle sources ──
+  const seriesMap = {};
+  let fetchErrors = 0;
+  for (const src of SOURCES) {
+    log('⏳', `Fetching ${src.label}…`, '');
+    try {
+      const candles = await fetchCandles(symbol, src.interval, src.limit);
+      seriesMap[src.id] = buildPhysics(candles);
+      // replace last log line with success
+      replaceLastLog('✅', src.label, `${candles.length} candles received`);
+    } catch(e) {
+      replaceLastLog('❌', src.label, e.message, true);
+      fetchErrors++;
+    }
+    await tick();
+  }
+
+  if (fetchErrors === SOURCES.length) {
+    replaceLastLog('🚫', 'All fetches failed', 'Check your internet connection or try again', true);
+    finishRun(false);
+    return;
+  }
+
+  // ── Live physics (from finest available source) ──
+  const livePhysics = (() => {
+    for (const id of ['5m','15m','1h']) {
+      const s = seriesMap[id];
+      if (s && s.length) { const l = s[s.length-1]; return { price:l.c, vel:l.vel, acc:l.acc, jrk:l.jrk, src:id }; }
+    }
+    return null;
+  })();
+
+  log('⚡', 'Live physics computed', livePhysics ? `price $${livePhysics.price.toLocaleString(undefined,{maximumFractionDigits:2})}` : 'unavailable');
+  await tick();
+
+  // ── KNN for each horizon ──
+  log('🧠', 'Running KNN pattern match…', `K=${K}, lookback=${LOOKBACK} candles`);
+  await tick();
+
+  const horizonResults = [];
+  for (const hz of HORIZONS) {
+    const srcResults = [];
+    for (const srcId of hz.srcIds) {
+      const series = seriesMap[srcId];
+      if (!series) continue;
+      const cm = CANDLE_MINUTES[srcId];
+      const r = knn(series, hz.minutes, cm);
+      if (r) srcResults.push({ srcId, ...r });
+    }
+    // Combine sources: weight by pool size × avg similarity
+    let combinedConf = null, combinedN = 0, totalPool = 0;
+    if (srcResults.length > 0) {
+      let wSum=0, wConf=0;
+      for (const r of srcResults) {
+        const w = r.totalPool * r.avgSim;
+        wConf += r.confidence * w; wSum += w;
+        combinedN   = Math.max(combinedN, r.n);
+        totalPool  += r.totalPool;
+      }
+      combinedConf = wSum > 1e-9 ? wConf/wSum : null;
+    }
+    horizonResults.push({ hz, confidence: combinedConf, n: combinedN, totalPool, srcResults });
+    const pct = combinedConf !== null ? (combinedConf*100).toFixed(0)+'%' : 'N/A';
+    const tier = combinedConf === null ? '—' : combinedConf >= minConf ? '▲ BUY signal' : 'below threshold';
+    log(combinedConf !== null && combinedConf >= minConf ? '🟢' : '⚪',
+        `${hz.label} horizon`, `${pct} confidence  ${tier}`);
+    await tick();
+  }
+
+  // ── Overall signal ──
+  const validH = horizonResults.filter(r => r.confidence !== null && r.n >= 5);
+  const triggered = validH.filter(r => r.confidence >= minConf);
+  const best = triggered.length > 0
+    ? triggered.reduce((a,b) => a.confidence > b.confidence ? a : b)
+    : null;
+
+  if (best) {
+    log('🎯', 'BUY signal confirmed', `${best.hz.label} horizon — ${(best.confidence*100).toFixed(0)}% confidence`);
+    triggerNotification(symbol, best);
+  } else {
+    log('⏸', 'No BUY signal', `No horizon reached ${(minConf*100).toFixed(0)}% threshold`);
+  }
+
+  await tick();
+  renderResults({ symbol, livePhysics, horizonResults, best, minConf, rtFee, fetchErrors });
+  finishRun(true);
+}
+
+function finishRun(ok) {
+  busy = false;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = false;
+  document.getElementById('pulse').className = ok ? 'pulse live' : 'pulse err';
+  document.getElementById('lastTs').textContent = new Date().toLocaleTimeString();
+  saveSettings();
+  resetTimer();
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════════════
+function renderResults({ symbol, livePhysics, horizonResults, best, minConf, rtFee, fetchErrors }) {
+  let html = '';
+
+  // Signal banner
+  if (best) {
+    const pct = (best.confidence*100).toFixed(0);
+    html += `<div class="signal-banner buy">
+      <div class="sb-eyebrow">Consensus Signal · ${symbol}</div>
+      <div class="sb-signal buy">▲ BUY</div>
+      <div class="sb-detail">
+        <span class="hi"><b>${pct}% confidence</b></span> on <b>${best.hz.label}</b> horizon
+        &nbsp;·&nbsp; Target: <b>+1.00%</b>
+        &nbsp;·&nbsp; Net after fees: <b class="hi">+${(1-rtFee).toFixed(2)}%</b><br>
+        Pattern matched against <b>${best.totalPool}</b> historical setups &nbsp;·&nbsp;
+        Auto-sell at close of <b>${best.hz.label}</b> interval
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="signal-banner hold">
+      <div class="sb-eyebrow">Consensus Signal · ${symbol}</div>
+      <div class="sb-signal hold">— HOLD / WAIT</div>
+      <div class="sb-detail">
+        No horizon reached the <b>${(minConf*100).toFixed(0)}%</b> confidence threshold.
+        ${fetchErrors > 0 ? `<span class="warn"> (${fetchErrors} data source${fetchErrors>1?'s':''} failed — results may be incomplete)</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Live physics
+  if (livePhysics) {
+    const p = livePhysics;
+    const fc = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'neu';
+    const fp = v => (v>=0?'+':'') + v.toFixed(4) + '%';
+    html += `<div class="section-label">Live Physics — ${p.src} candles</div>
+    <div class="phys-strip">
+      <div class="phys-cell">
+        <div class="pc-label">Price</div>
+        <div class="pc-val neu">$${p.price.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="pc-sub">${symbol}</div>
+      </div>
+      <div class="phys-cell">
+        <div class="pc-label">⚡ Velocity</div>
+        <div class="pc-val ${fc(p.vel)}">${fp(p.vel)}</div>
+        <div class="pc-sub">%/candle — rate of change</div>
+      </div>
+      <div class="phys-cell">
+        <div class="pc-label">🚀 Acceleration</div>
+        <div class="pc-val ${fc(p.acc)}">${fp(p.acc)}</div>
+        <div class="pc-sub">%/candle² — speeding up?</div>
+      </div>
+      <div class="phys-cell">
+        <div class="pc-label">⚙️ Jerk</div>
+        <div class="pc-val ${fc(p.jrk)}">${fp(p.jrk)}</div>
+        <div class="pc-sub">%/candle³ — conviction shift</div>
+      </div>
+    </div>`;
+  }
+
+  // Horizon cards
+  html += `<div class="section-label">Prediction Horizons — KNN Pattern Match (target: +1%)</div>
+  <div class="horizons-grid">`;
+
+  for (const r of horizonResults) {
+    const conf = r.confidence;
+    const pct  = conf !== null ? (conf*100).toFixed(0) : null;
+    const tier = conf === null ? 'none'
+               : conf >= minConf ? 'hi'
+               : conf >= minConf * 0.85 ? 'mid' : 'lo';
+    const barColor = { hi:'var(--green)', mid:'var(--gold)', lo:'var(--dim)', none:'var(--dim)' }[tier];
+    const barW = conf !== null ? Math.round(conf*100) : 0;
+    const signal = tier === 'hi' ? '▲ BUY' : tier === 'mid' ? '↗ Close' : '— Wait';
+    const sigColor = tier === 'hi' ? 'pos' : tier === 'mid' ? 'warn' : 'neu';
+
+    html += `<div class="hcard tier-${tier}">
+      <div class="hcard-top">
+        <div class="hcard-horizon">${r.hz.label}</div>
+        <div class="conf-badge ${tier==='none'?'na':tier}">${pct !== null ? pct+'%' : 'N/A'}</div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${barW}%;background:${barColor}"></div></div>
+      <div class="hcard-stats">
+        <div class="stat-row"><span class="stat-k">Confidence</span><span class="stat-v ${sigColor}">${pct !== null ? pct+'%' : 'No data'}</span></div>
+        <div class="stat-row"><span class="stat-k">Neighbours</span><span class="stat-v neu">K=${r.n}</span></div>
+        <div class="stat-row"><span class="stat-k">Historical pool</span><span class="stat-v neu">${r.totalPool} setups</span></div>
+        <div class="stat-row"><span class="stat-k">Signal</span><span class="stat-v ${sigColor}">${signal}</span></div>
+        ${r.srcResults.length > 0 ? `<div class="sources-detail">
+          ${r.srcResults.map(s=>`<div class="src-line">${s.srcId}: <b>${(s.confidence*100).toFixed(0)}%</b> conf · sim=${s.avgSim.toFixed(2)} · pool=${s.totalPool}</div>`).join('')}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Data sources status
+  html += `<div class="section-label">Data Sources</div><div class="ds-table">`;
+  for (const src of SOURCES) {
+    const s = seriesMap_render[src.id];
+    if (s) {
+      const pts = s.length;
+      const first = new Date(s[0].t).toLocaleDateString();
+      html += `<div class="ds-row"><span class="ds-key">${src.label}</span><span class="ds-ok">✓ ${pts} candles · from ${first}</span></div>`;
+    } else {
+      html += `<div class="ds-row"><span class="ds-key">${src.label}</span><span class="ds-err">✗ Failed to load</span></div>`;
+    }
+  }
+  html += `</div>`;
+
+  // Notification prompt
+  if (Notification.permission === 'default') {
+    html += `<div class="notif-row">
+      <p>Enable notifications to get an alert when a BUY signal fires while this app is open.</p>
+      <button class="notif-btn" onclick="askNotif()">Enable Alerts</button>
+    </div>`;
+  } else if (Notification.permission === 'granted') {
+    html += `<div class="notif-row"><p style="color:var(--green)">✓ Notifications active — you'll be alerted on BUY signals.</p></div>`;
+  }
+
+  document.getElementById('scroll').innerHTML = html;
+}
+
+// We need seriesMap accessible to render — hoist it
+let seriesMap_render = {};
+
+// Patch runAnalysis to store seriesMap for render
+const _origRun = runAnalysis;
+// Inline: seriesMap is used directly since renderResults is called within the same scope.
+// (seriesMap_render is populated during analysis loop below — see patched version)
+
+// ═══════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════════════
+async function askNotif() {
+  const p = await Notification.requestPermission();
+  showToast(p === 'granted' ? '✓ Alerts enabled' : 'Alerts blocked in browser settings');
+  if (p !== 'default') runAnalysis();
+}
+function triggerNotification(symbol, best) {
+  if (Notification.permission !== 'granted') return;
+  try {
+    new Notification('WAVE — BUY Signal', {
+      body: `${symbol}: ${(best.confidence*100).toFixed(0)}% confidence · ${best.hz.label} horizon · target +1%`,
+      tag: 'wave-buy', renotify: true,
+    });
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function tick() { return new Promise(r => setTimeout(r, 20)); }
+function showToast(msg, dur=2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function replaceLastLog(icon, text, val='', isErr=false) {
+  if (!logEl) return;
+  const lines = logEl.querySelectorAll('.log-line');
+  const last = lines[lines.length-1];
+  if (last) { last.querySelector('.log-icon').textContent = icon;
+    last.querySelector('.log-text').textContent = text;
+    const vEl = last.querySelector('.log-val,.log-err');
+    if (vEl) { vEl.textContent = val; vEl.className = isErr ? 'log-err' : 'log-val'; }
+  }
+}
+function onPairChange() { saveSettings(); }
+function resetTimer() {
+  clearInterval(autoTimer);
+  const secs = parseInt(document.getElementById('autoRefresh').value);
+  if (secs > 0) autoTimer = setInterval(runAnalysis, secs * 1000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PATCH runAnalysis to capture seriesMap for render
+// ═══════════════════════════════════════════════════════
+// Override the function inline — rebuild it cleanly:
+async function runAnalysis() {
+  if (busy) return;
+  busy = true;
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('pulse').className = 'pulse busy';
+
+  const symbol  = document.getElementById('pairSelect').value;
+  const minConf = Math.max(0.5, Math.min(0.95, parseFloat(document.getElementById('minConf').value)/100 || 0.55));
+  const maker   = parseFloat(document.getElementById('makerFee').value) || 0;
+  const taker   = parseFloat(document.getElementById('takerFee').value) || 0;
+  const rtFee   = maker + taker;
+
+  initLog();
+  log('🔍', `Analyzing ${symbol}`);
+  log('📡', 'Data source', 'data-api.binance.vision');
+  await tick();
+
+  seriesMap_render = {};
+  let fetchErrors = 0;
+
+  for (const src of SOURCES) {
+    log('⏳', `Fetching ${src.label}…`);
+    try {
+      const candles = await fetchCandles(symbol, src.interval, src.limit);
+      seriesMap_render[src.id] = buildPhysics(candles);
+      replaceLastLog('✅', src.label, `${candles.length} candles`);
+    } catch(e) {
+      replaceLastLog('❌', src.label, e.message, true);
+      fetchErrors++;
+    }
+    await tick();
+  }
+
+  if (fetchErrors === SOURCES.length) {
+    log('🚫', 'All data fetches failed', 'Check connection and try again', true);
+    finishRun(false); return;
+  }
+
+  // Live physics
+  const livePhysics = (() => {
+    for (const id of ['5m','15m','1h']) {
+      const s = seriesMap_render[id];
+      if (s && s.length) { const l = s[s.length-1]; return { price:l.c, vel:l.vel, acc:l.acc, jrk:l.jrk, src:id }; }
+    }
+    return null;
+  })();
+  log('⚡', 'Live physics', livePhysics ? `$${livePhysics.price.toLocaleString(undefined,{maximumFractionDigits:2})} via ${livePhysics.src}` : 'unavailable');
+  await tick();
+
+  // KNN
+  log('🧠', 'Running KNN pattern match…', `K=${K}, lookback=${LOOKBACK}`);
+  await tick();
+
+  const horizonResults = [];
+  for (const hz of HORIZONS) {
+    const srcResults = [];
+    for (const srcId of hz.srcIds) {
+      const series = seriesMap_render[srcId];
+      if (!series) continue;
+      const r = knn(series, hz.minutes, CANDLE_MINUTES[srcId]);
+      if (r) srcResults.push({ srcId, ...r });
+    }
+    let combinedConf=null, combinedN=0, totalPool=0;
+    if (srcResults.length > 0) {
+      let wSum=0, wConf=0;
+      for (const r of srcResults) {
+        const w = r.totalPool * r.avgSim;
+        wConf += r.confidence*w; wSum += w;
+        combinedN  = Math.max(combinedN, r.n);
+        totalPool += r.totalPool;
+      }
+      combinedConf = wSum > 1e-9 ? wConf/wSum : null;
+    }
+    horizonResults.push({ hz, confidence:combinedConf, n:combinedN, totalPool, srcResults });
+    const pct = combinedConf !== null ? (combinedConf*100).toFixed(0)+'%' : 'N/A';
+    const tier = combinedConf !== null && combinedConf >= minConf ? '▲ BUY' : 'below threshold';
+    log(combinedConf !== null && combinedConf >= minConf ? '🟢':'⚪',
+        `${hz.label} horizon`, `${pct} · ${tier}`);
+    await tick();
+  }
+
+  // Best signal
+  const validH = horizonResults.filter(r => r.confidence !== null && r.n >= 5);
+  const triggered = validH.filter(r => r.confidence >= minConf);
+  const best = triggered.length > 0 ? triggered.reduce((a,b)=>a.confidence>b.confidence?a:b) : null;
+
+  if (best) {
+    log('🎯', 'BUY signal', `${best.hz.label} · ${(best.confidence*100).toFixed(0)}% confidence`);
+    triggerNotification(symbol, best);
+  } else {
+    log('⏸', 'No BUY signal', `threshold: ${(minConf*100).toFixed(0)}%`);
+  }
+
+  await tick();
+  renderResults({ symbol, livePhysics, horizonResults, best, minConf, rtFee, fetchErrors });
+  finishRun(true);
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+loadSettings();
+resetTimer();
+</script>
+</body>
+</html>
