@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OHLCV Source Diagnostic</title>
+<style>
+  body { font-family: monospace; background: #0a0a0f; color: #e0e0e0; padding: 16px; max-width: 700px; }
+  h1 { color: #00ff88; font-size: 1rem; }
+  .sub { color: #666; font-size: 0.75rem; margin-bottom: 20px; }
+  button { background: #0d1f2d; color: #00ff88; border: 1px solid #00ff88;
+           padding: 10px 20px; cursor: pointer; font-family: monospace;
+           font-size: 0.85rem; border-radius: 4px; margin-bottom: 20px; display: block; }
+  .row { border: 1px solid #1a1a2e; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+  .row-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #333; flex-shrink: 0; }
+  .dot.testing { background: #ffaa00; animation: pulse 0.8s infinite; }
+  .dot.ok { background: #00ff88; }
+  .dot.fail { background: #ff4444; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .source-name { color: #00aaff; font-size: 0.85rem; font-weight: bold; }
+  .detail { font-size: 0.72rem; color: #888; margin-top: 4px; padding-left: 20px; }
+  .detail.ok { color: #00ff88; }
+  .detail.err { color: #ff6666; }
+  .sample { font-size: 0.68rem; color: #aaa; margin-top: 6px; padding-left: 20px;
+            background: #0d0d14; padding: 6px 10px; border-radius: 4px;
+            white-space: pre-wrap; word-break: break-all; }
+  .winner { border-color: #00ff88; background: #001a0d; }
+  #console-note { margin-top: 20px; padding: 12px; background: #1a0f00; border: 1px solid #ff8800;
+                  border-radius: 6px; font-size: 0.75rem; color: #ffaa44; display: none; }
+</style>
+</head>
+<body>
+<h1>🔬 OHLCV Source Diagnostic</h1>
+<div class="sub">Tests every viable public data source. Opens browser console errors for each failure.</div>
+
+<button onclick="runDiagnostic()">▶ Run Diagnostic</button>
+<div id="rows"></div>
+<div id="console-note"></div>
+
+<script>
+const SOURCES = [
+  {
+    name: 'Binance — api.binance.com',
+    url: 'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=3',
+    parse: d => ({ ok: true, price: parseFloat(d[2][4]), msg: `Close: $${parseFloat(d[2][4]).toFixed(2)}` }),
+  },
+  {
+    name: 'Binance Data Vision — data-api.binance.vision',
+    url: 'https://data-api.binance.vision/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=3',
+    parse: d => ({ ok: true, price: parseFloat(d[2][4]), msg: `Close: $${parseFloat(d[2][4]).toFixed(2)}` }),
+  },
+  {
+    name: 'Binance US — api.binance.us',
+    url: 'https://api.binance.us/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=3',
+    parse: d => ({ ok: true, price: parseFloat(d[2][4]), msg: `Close: $${parseFloat(d[2][4]).toFixed(2)}` }),
+  },
+  {
+    name: 'Kraken — api.kraken.com',
+    url: 'https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=60',
+    parse: d => {
+      const candles = d.result?.XXBTZUSD || d.result?.XBTUSD || Object.values(d.result||{})[0];
+      if (!candles?.length) throw new Error('No candle data');
+      const last = candles[candles.length - 1];
+      return { ok: true, price: parseFloat(last[4]), msg: `Close: $${parseFloat(last[4]).toFixed(2)}` };
+    },
+  },
+  {
+    name: 'CoinGecko — api.coingecko.com',
+    url: 'https://api.coingecko.com/api/v3/coins/bitcoin/ohlc?vs_currency=usd&days=1',
+    parse: d => {
+      if (!d?.length) throw new Error('No data');
+      const last = d[d.length - 1];
+      return { ok: true, price: last[4], msg: `Close: $${last[4].toFixed(2)} (OHLC, not per-minute)` };
+    },
+  },
+  {
+    name: 'CryptoCompare — min-api.cryptocompare.com',
+    url: 'https://min-api.cryptocompare.com/data/v2/histohour?fsym=BTC&tsym=USD&limit=3',
+    parse: d => {
+      const data = d?.Data?.Data;
+      if (!data?.length) throw new Error('No data');
+      const last = data[data.length - 1];
+      return { ok: true, price: last.close, msg: `Close: $${last.close.toFixed(2)}` };
+    },
+  },
+  {
+    name: 'Bybit — api.bybit.com',
+    url: 'https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=60&limit=3',
+    parse: d => {
+      const list = d?.result?.list;
+      if (!list?.length) throw new Error('No data');
+      const last = list[0]; // Bybit returns newest first
+      return { ok: true, price: parseFloat(last[4]), msg: `Close: $${parseFloat(last[4]).toFixed(2)}` };
+    },
+  },
+  {
+    name: 'OKX — www.okx.com',
+    url: 'https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1H&limit=3',
+    parse: d => {
+      const list = d?.data;
+      if (!list?.length) throw new Error('No data');
+      const last = list[0];
+      return { ok: true, price: parseFloat(last[4]), msg: `Close: $${parseFloat(last[4]).toFixed(2)}` };
+    },
+  },
+  {
+    name: 'Gate.io — api.gateio.ws',
+    url: 'https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=BTC_USDT&interval=1h&limit=3',
+    parse: d => {
+      if (!d?.length) throw new Error('No data');
+      const last = d[d.length - 1];
+      // Gate: [timestamp, volume, close, high, low, open, ...]
+      return { ok: true, price: parseFloat(last[2]), msg: `Close: $${parseFloat(last[2]).toFixed(2)}` };
+    },
+  },
+];
+
+async function testSource(source, rowEl) {
+  const dot = rowEl.querySelector('.dot');
+  const detail = rowEl.querySelector('.detail');
+  dot.className = 'dot testing';
+  detail.textContent = 'Testing…';
+  detail.className = 'detail';
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    const res = await fetch(source.url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    const raw = await res.text();
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${raw.slice(0,120)}`);
+    }
+
+    let json;
+    try { json = JSON.parse(raw); }
+    catch(e) { throw new Error(`Non-JSON response: ${raw.slice(0,80)}`); }
+
+    const result = source.parse(json);
+
+    dot.className = 'dot ok';
+    detail.className = 'detail ok';
+    detail.textContent = `✅ WORKS — ${result.msg}`;
+    rowEl.classList.add('winner');
+
+    // Show sample data
+    const sample = document.createElement('div');
+    sample.className = 'sample';
+    sample.textContent = JSON.stringify(json).slice(0, 300) + '…';
+    rowEl.appendChild(sample);
+
+    return true;
+  } catch(e) {
+    dot.className = 'dot fail';
+    detail.className = 'detail err';
+    const msg = e.name === 'AbortError' ? 'Timed out after 8s' : e.message;
+    detail.textContent = `❌ ${msg}`;
+    return false;
+  }
+}
+
+async function runDiagnostic() {
+  const container = document.getElementById('rows');
+  container.innerHTML = '';
+  const note = document.getElementById('console-note');
+  note.style.display = 'none';
+
+  const rows = SOURCES.map(src => {
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `
+      <div class="row-header">
+        <div class="dot"></div>
+        <div class="source-name">${src.name}</div>
+      </div>
+      <div class="detail">Waiting…</div>
+    `;
+    container.appendChild(div);
+    return div;
+  });
+
+  let anyWorked = false;
+  for (let i = 0; i < SOURCES.length; i++) {
+    const worked = await testSource(SOURCES[i], rows[i]);
+    if (worked) anyWorked = true;
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  note.style.display = 'block';
+  if (anyWorked) {
+    note.style.background = '#001a0d';
+    note.style.borderColor = '#00ff88';
+    note.style.color = '#00ff88';
+    note.textContent = '✅ At least one source works — screenshot this and share which ones are green.';
+  } else {
+    note.style.background = '#1a0500';
+    note.style.borderColor = '#ff4444';
+    note.style.color = '#ff6666';
+    note.textContent = '❌ All sources failed. This is likely a network/CORS issue. Open browser DevTools (F12 → Console or Network) and look for the error next to any red request. Share what you see — that error message will tell us exactly what to fix.';
+  }
+}
+</script>
+</body>
+</html>
