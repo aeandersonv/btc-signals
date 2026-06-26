@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="WAVE">
 <meta name="theme-color" content="#060a10">
-<title>WAVE 17 — Momentum Analyzer</title>
+<title>WAVE 18 — Momentum Analyzer</title>
 <style>
 :root{
   --bg:#060a10;--bg2:#0b1018;--bg3:#101620;--bg4:#151d2a;
@@ -77,14 +77,20 @@ html,body{height:100%;background:var(--bg);color:var(--text);
 .rec-card.hold {background:#44556610;border-color:var(--dim)}
 .rec-eyebrow{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
 .rec-action{font-size:1.5rem;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
-.rec-action.go   {color:var(--green2)}
-.rec-action.soft {color:var(--gold)}
-.rec-action.watch{color:var(--violet)}
-.rec-action.hold {color:var(--muted)}
+.rec-action.go{color:var(--green2)}.rec-action.soft{color:var(--gold)}
+.rec-action.watch{color:var(--violet)}.rec-action.hold{color:var(--muted)}
 .rec-disclaimer{font-size:.65rem;color:var(--gold);margin-bottom:8px;padding:4px 8px;
   background:#ffb83012;border-radius:4px;border:1px solid #ffb83030}
 .rec-body{font-size:.75rem;color:var(--muted);line-height:1.8}
 .rec-body b{color:var(--text)}.hi{color:var(--green2)}.warn{color:var(--gold)}
+/* stability badge */
+.stab-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.stab-badge{font-size:.65rem;padding:2px 8px;border-radius:3px;font-weight:700}
+.stab-badge.stable{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.stab-badge.shifted{background:#ffb83018;color:var(--gold);border:1px solid var(--gold)}
+.stab-badge.new{background:#44556618;color:var(--muted);border:1px solid var(--dim)}
+.stab-conf{font-size:.65rem;color:var(--muted)}
+.stab-conf b{color:var(--text)}
 /* trade box */
 .trade-box{margin-top:12px;padding:12px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)}
 .trade-box-title{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
@@ -153,7 +159,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);
 .hz-why{margin-top:6px;padding-top:6px;border-top:1px solid var(--bg3);
   font-size:.67rem;color:var(--muted);line-height:1.55}
 /* backtest */
-.bt-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:0}
+.bt-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .bt-hdr{padding:10px 12px;border-bottom:1px solid var(--border);
   display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
 .bt-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
@@ -178,7 +184,7 @@ table.bt tr:last-child td{border-bottom:none}
 .ml-hdr{padding:9px 12px;border-bottom:1px solid var(--border);
   display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
 .ml-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-.ml-sub{font-size:.63rem;color:var(--dim)}
+.ml-sub{font-size:.63rem;color:var(--dim);word-break:break-all}
 table.ml{width:100%;border-collapse:collapse;font-size:.7rem}
 table.ml th{background:var(--bg3);color:var(--muted);padding:5px 9px;text-align:left;
   font-weight:normal;font-size:.63rem;text-transform:uppercase;white-space:nowrap}
@@ -188,7 +194,7 @@ table.ml tr:hover td{background:var(--bg3)}
 .mhi{color:var(--green)}.mmid{color:var(--gold)}.mlo{color:var(--red)}.mna{color:var(--dim)}
 .bari{display:inline-block;height:3px;border-radius:2px;vertical-align:middle;margin-left:5px}
 .ml-foot{padding:7px 12px;font-size:.63rem;color:var(--dim);line-height:1.7;border-top:1px solid var(--border)}
-/* data */
+/* data validation */
 .ds-table{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .ds-row{display:flex;justify-content:space-between;align-items:center;
   padding:7px 12px;border-bottom:1px solid var(--bg3);font-size:.7rem;flex-wrap:wrap;gap:4px}
@@ -233,7 +239,7 @@ table.ct tr.live-row td{background:#00d97e07}
 <div class="topbar">
   <div class="logo-wrap">
     <div class="logo">WAVE</div>
-    <div class="logo-sub">MOMENTUM ANALYZER v17</div>
+    <div class="logo-sub">MOMENTUM ANALYZER v18</div>
   </div>
   <select class="pair-select" id="pairSelect" onchange="saveSettings()">
     <option value="BTCUSDT">BTC / USDT</option>
@@ -244,7 +250,7 @@ table.ct tr.live-row td{background:#00d97e07}
   </select>
   <div class="status-wrap">
     <div class="pulse" id="pulse"></div>
-    <div class="last-ts" id="lastTs">—</div>
+    <div class="last-ts" id="lastTs">--</div>
     <button class="run-btn" id="runBtn" onclick="runAnalysis()">&#8635; Analyze</button>
   </div>
 </div>
@@ -265,12 +271,12 @@ table.ct tr.live-row td{background:#00d97e07}
       <div class="sgrp">
         <div class="slabel"><b>Entry buffer %</b></div>
         <input class="sinput" type="number" id="entryBuffer" value="0.10" step="0.05" min="0" max="1" oninput="saveSettings();updateFeeDisplay()">
-        <div class="sdesc">Slippage allowance above last price for your limit buy.</div>
+        <div class="sdesc">Slippage allowance above last price for limit buy.</div>
       </div>
       <div class="sgrp">
         <div class="slabel"><b>Min confidence %</b></div>
         <input class="sinput" type="number" id="minConf" value="55" step="1" min="40" max="95" oninput="saveSettings()">
-        <div class="sdesc">Full-send threshold. Soft signals fire at base-rate + 5pp regardless.</div>
+        <div class="sdesc">Full-send threshold. Hysteresis band applied automatically (+2pp entry / -3pp exit).</div>
       </div>
     </div>
   </div>
@@ -283,16 +289,15 @@ table.ct tr.live-row td{background:#00d97e07}
 <div class="scroll" id="scroll">
   <div class="empty-hint">
     Select a pair and tap <b>&#8635; Analyze</b>.<br><br>
-    Pulls 5 timeframes &middot; computes V/A/J + 6 context features per candle &middot;
-    runs KNN pattern match with 10-candle fingerprints &middot;
-    backtests out-of-sample &middot; recommends the best trade or multi-trade stack.
+    5 timeframes &middot; 9 KNN features &middot; smoothed live fingerprint &middot;
+    hysteresis thresholds &middot; out-of-sample backtest &middot; stability indicator.
   </div>
 </div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
 
-// CONFIG
+// ── CONFIG ──────────────────────────────────────────────────────────────────
 const SOURCES=[
   {id:'30m',interval:'30m',limit:480,label:'30m (~10 days)',minutes:30},
   {id:'1h', interval:'1h', limit:500,label:'1h  (~21 days)',minutes:60},
@@ -308,93 +313,117 @@ const HORIZONS=[
   {label:'12h', minutes:720,  srcIds:['4h','6h'], target:1.75},
   {label:'24h', minutes:1440, srcIds:['6h','1d'], target:2.50},
 ];
-const K=10,LOOKBACK=10,DECAY=0.5,TIMEOUT=12000,RECENT_N=10,MAX_EVAL=120,YIELD_EVERY=15,MIN_EDGE=5;
+const K=10, LOOKBACK=10, DECAY=0.5, TIMEOUT=12000, RECENT_N=10;
+const MAX_EVAL=120, YIELD_EVERY=15, MIN_EDGE=5;
+// Stability: smooth live fingerprint over last N completed candles (exclude live)
+const SMOOTH_N=3;
+// Hysteresis: GO needs conf >= minConf+HYST_UP; stays GO until conf < minConf-HYST_DN
+const HYST_UP=0.02, HYST_DN=0.03;
 const DIMS=['vel','acc','jrk','rangePos','distFromHi','bodyRatio','regSlope','volMom','wickBalance'];
-const API_FALLBACKS=['https://data-api.binance.vision/api/v3/klines','https://api.binance.us/api/v3/klines'];
+const API_FALLBACKS=[
+  'https://data-api.binance.vision/api/v3/klines',
+  'https://api.binance.us/api/v3/klines',
+];
 
-// SETTINGS
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
 function loadSettings(){
   try{
-    const s=JSON.parse(localStorage.getItem('wave_v17')||'{}');
-    if(s.pair)document.getElementById('pairSelect').value=s.pair;
-    if(s.maker!=null)document.getElementById('makerFee').value=s.maker;
-    if(s.taker!=null)document.getElementById('takerFee').value=s.taker;
-    if(s.buf!=null)document.getElementById('entryBuffer').value=s.buf;
-    if(s.conf!=null)document.getElementById('minConf').value=s.conf;
+    const s=JSON.parse(localStorage.getItem('wave_v18')||'{}');
+    if(s.pair) document.getElementById('pairSelect').value=s.pair;
+    if(s.maker!=null) document.getElementById('makerFee').value=s.maker;
+    if(s.taker!=null) document.getElementById('takerFee').value=s.taker;
+    if(s.buf!=null)   document.getElementById('entryBuffer').value=s.buf;
+    if(s.conf!=null)  document.getElementById('minConf').value=s.conf;
   }catch(e){}
   updateFeeDisplay();
 }
 function saveSettings(){
-  try{localStorage.setItem('wave_v17',JSON.stringify({
-    pair:document.getElementById('pairSelect').value,
-    maker:document.getElementById('makerFee').value,
-    taker:document.getElementById('takerFee').value,
-    buf:document.getElementById('entryBuffer').value,
-    conf:document.getElementById('minConf').value,
-  }));}catch(e){}
+  try{
+    localStorage.setItem('wave_v18',JSON.stringify({
+      pair: document.getElementById('pairSelect').value,
+      maker:document.getElementById('makerFee').value,
+      taker:document.getElementById('takerFee').value,
+      buf:  document.getElementById('entryBuffer').value,
+      conf: document.getElementById('minConf').value,
+    }));
+  }catch(e){}
 }
 function updateFeeDisplay(){
-  const rt=(parseFloat(document.getElementById('makerFee').value)||0)+(parseFloat(document.getElementById('takerFee').value)||0);
+  const rt=(parseFloat(document.getElementById('makerFee').value)||0)
+          +(parseFloat(document.getElementById('takerFee').value)||0);
   document.getElementById('rtDisp').textContent=rt.toFixed(2)+'%';
   document.getElementById('bufDisp').textContent=(parseFloat(document.getElementById('entryBuffer').value)||0).toFixed(2)+'%';
 }
 function toggleSettings(){
-  const b=document.getElementById('sbody');const open=b.classList.toggle('open');
+  const b=document.getElementById('sbody');
+  const open=b.classList.toggle('open');
   document.getElementById('sarrow').textContent=open?'\u25b4':'\u25be';
 }
 
-// PROGRESS LOG
+// ── PROGRESS LOG ─────────────────────────────────────────────────────────────
 let logEl=null;
 function initLog(){
-  document.getElementById('scroll').innerHTML='<div class="plog" id="plog"><div class="plog-title">Running analysis...</div></div>';
+  document.getElementById('scroll').innerHTML=
+    '<div class="plog" id="plog"><div class="plog-title">Running analysis...</div></div>';
   logEl=document.getElementById('plog');
 }
 function log(icon,text,val,err){
-  val=val||'';err=err||false;
+  val=val||'';err=!!err;
   if(!logEl)return;
   const d=document.createElement('div');d.className='ll';
-  d.innerHTML='<span class="li">'+icon+'</span><span class="lt">'+text+'</span><span class="'+(err?'le':'lv')+'">'+val+'</span>';
-  logEl.appendChild(d);d.scrollIntoView({behavior:'smooth',block:'nearest'});
+  d.innerHTML='<span class="li">'+icon+'</span><span class="lt">'+text+'</span>'
+    +'<span class="'+(err?'le':'lv')+'">'+val+'</span>';
+  logEl.appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function replaceLog(icon,text,val,err){
-  val=val||'';err=err||false;
+  val=val||'';err=!!err;
   if(!logEl)return;
-  const ls=logEl.querySelectorAll('.ll');const l=ls[ls.length-1];if(!l)return;
+  const ls=logEl.querySelectorAll('.ll');
+  const l=ls[ls.length-1];if(!l)return;
   l.querySelector('.li').textContent=icon;
   l.querySelector('.lt').textContent=text;
-  const v=l.querySelector('.lv,.le');if(v){v.textContent=val;v.className=err?'le':'lv';}
+  const v=l.querySelector('.lv,.le');
+  if(v){v.textContent=val;v.className=err?'le':'lv';}
 }
 
-// FETCH
+// ── FETCH ─────────────────────────────────────────────────────────────────────
 async function fetchCandles(symbol,interval,limit){
   let lastErr=null;
   for(const base of API_FALLBACKS){
-    const ctrl=new AbortController();const t=setTimeout(()=>ctrl.abort(),TIMEOUT);
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),TIMEOUT);
     try{
       const res=await fetch(base+'?symbol='+symbol+'&interval='+interval+'&limit='+limit,{signal:ctrl.signal});
       clearTimeout(t);
-      if(!res.ok)throw new Error('HTTP '+res.status);
+      if(!res.ok) throw new Error('HTTP '+res.status);
       const raw=await res.json();
-      if(!Array.isArray(raw)||!raw.length)throw new Error('Empty response');
+      if(!Array.isArray(raw)||!raw.length) throw new Error('Empty response');
       return raw.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
     }catch(e){clearTimeout(t);lastErr=e.name==='AbortError'?new Error('Timed out'):e;}
   }
   throw lastErr||new Error('All sources failed');
 }
 
-// PHYSICS + CONTEXT
+// ── PHYSICS + CONTEXT ─────────────────────────────────────────────────────────
 function deriv(a){
   return a.map((v,i)=>{
-    if(i===0)return a[1]-a[0];if(i===a.length-1)return a[i]-a[i-1];return(a[i+1]-a[i-1])/2;
+    if(i===0) return a[1]-a[0];
+    if(i===a.length-1) return a[i]-a[i-1];
+    return (a[i+1]-a[i-1])/2;
   });
 }
 function buildPhysics(candles){
   const closes=candles.map(x=>x.c);
   const vel=deriv(closes),acc=deriv(vel),jrk=deriv(acc);
   return candles.map((x,i)=>{
-    const pv=x.c>0?vel[i]/x.c*100:0,pa=x.c>0?acc[i]/x.c*100:0,pj=x.c>0?jrk[i]/x.c*100:0;
-    const lb=Math.min(30,i+1),win=candles.slice(Math.max(0,i-lb+1),i+1);
-    const hi30=Math.max(...win.map(w=>w.h)),lo30=Math.min(...win.map(w=>w.l));
+    const pv=x.c>0?vel[i]/x.c*100:0;
+    const pa=x.c>0?acc[i]/x.c*100:0;
+    const pj=x.c>0?jrk[i]/x.c*100:0;
+    const lb=Math.min(30,i+1);
+    const win=candles.slice(Math.max(0,i-lb+1),i+1);
+    const hi30=Math.max(...win.map(w=>w.h));
+    const lo30=Math.min(...win.map(w=>w.l));
     const rangePos=(hi30-lo30)>0?(x.c-lo30)/(hi30-lo30):0.5;
     const distFromHi=hi30>0?(hi30-x.c)/hi30*100:0;
     const range=x.h-x.l,body=Math.abs(x.c-x.o);
@@ -407,18 +436,37 @@ function buildPhysics(candles){
     if(rw.length>=4){
       const m=rw.length;let sx=0,sy=0,sxy=0,sx2=0;
       for(let j=0;j<m;j++){sx+=j;sy+=rw[j];sxy+=j*rw[j];sx2+=j*j;}
-      const den=m*sx2-sx*sx;if(den)regSlope=(m*sxy-sx*sy)/den/(rw[m-1]||1)*100;
+      const den=m*sx2-sx*sx;
+      if(den) regSlope=(m*sxy-sx*sy)/den/(rw[m-1]||1)*100;
     }
     const vw=candles.slice(Math.max(0,i-14),i+1).map(w=>w.v);
     const rv=vw.slice(-5).reduce((a,b)=>a+b,0)/Math.min(5,vw.length);
     const pv2=vw.slice(0,-5).reduce((a,b)=>a+b,0)/Math.max(1,vw.length-5);
     const volMom=pv2>0?rv/pv2:1;
-    return{t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,v:x.v,vel:pv,acc:pa,jrk:pj,
-      rangePos,distFromHi,bodyRatio,wickBalance,regSlope,volMom};
+    return{t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,v:x.v,
+      vel:pv,acc:pa,jrk:pj,rangePos,distFromHi,bodyRatio,wickBalance,regSlope,volMom};
   });
 }
 
-// KNN
+// ── SMOOTHED LIVE SNAPSHOT ────────────────────────────────────────────────────
+// Average last SMOOTH_N COMPLETED candles (exclude index n-1 which is live/forming).
+// This is the key stability fix: a forming candle has partial V/A/J; averaging
+// completed candles means a 10-second re-run sees identical physics.
+function smoothedLivePhysics(series){
+  const n=series.length;
+  if(n<SMOOTH_N+2) return series[n-1]; // fallback
+  // Use candles n-1-SMOOTH_N .. n-2 (completed, not the forming candle)
+  const window=series.slice(n-1-SMOOTH_N, n-1);
+  const avg={};
+  for(const d of DIMS){
+    avg[d]=window.reduce((s,c)=>s+(c[d]||0),0)/window.length;
+  }
+  // Price and OHLCV still from latest candle
+  const last=series[n-1];
+  return Object.assign({},last,avg);
+}
+
+// ── KNN ───────────────────────────────────────────────────────────────────────
 function computeNormStats(series){
   const stats={};
   for(const d of DIMS){
@@ -429,104 +477,183 @@ function computeNormStats(series){
   }
   return stats;
 }
+
+// makeFP: build a normalised fingerprint for candle at endIdx.
+// STABILITY: uses only completed candles — pool excludes last 2 candles so
+// the forming candle never leaks into training examples.
 function makeFP(series,endIdx,norm){
-  if(endIdx<LOOKBACK-1)return null;
+  if(endIdx<LOOKBACK-1) return null;
   const v=[];
-  for(let i=endIdx-LOOKBACK+1;i<=endIdx;i++)
-    for(const d of DIMS)v.push(((series[i][d]||0)-norm[d].mean)/norm[d].std);
+  for(let i=endIdx-LOOKBACK+1;i<=endIdx;i++){
+    for(const d of DIMS) v.push(((series[i][d]||0)-norm[d].mean)/norm[d].std);
+  }
   return v;
 }
-function euclidDist(a,b){let s=0;for(let i=0;i<a.length;i++)s+=(a[i]-b[i])**2;return Math.sqrt(s);}
+
+// makeSmoothFP: fingerprint for the LIVE query using smoothed last candle.
+// This is what we compare against the pool — ensures stability across re-runs.
+function makeSmoothFP(series,norm){
+  const n=series.length;
+  if(n<LOOKBACK+1) return null;
+  const v=[];
+  // Use LOOKBACK-1 completed candles + the smoothed live value as the final entry
+  const smoothed=smoothedLivePhysics(series);
+  const base=series.slice(n-1-LOOKBACK, n-1); // completed history
+  const window=[...base, smoothed];            // last entry = smoothed live
+  if(window.length<LOOKBACK) return null;
+  for(const c of window){
+    for(const d of DIMS) v.push(((c[d]||0)-norm[d].mean)/norm[d].std);
+  }
+  return v;
+}
+
+function euclidDist(a,b){
+  let s=0;for(let i=0;i<a.length;i++) s+=(a[i]-b[i])**2;return Math.sqrt(s);
+}
 function distToSim(d){return 1/(1+d);}
 
 async function knnFull(series,horizonMinutes,candleMinutes,target,onProg){
   const prog=onProg||(()=>{});
-  const n=series.length,hc=Math.round(horizonMinutes/candleMinutes);
-  const minI=LOOKBACK-1,maxI=n-1-hc;
-  prog('n='+n+' hc='+hc+' pool='+Math.max(0,maxI-minI));await tick();
+  const n=series.length;
+  const hc=Math.round(horizonMinutes/candleMinutes);
+  // STABILITY: exclude last 2 candles from pool (live + its immediate predecessor
+  // which may have been partially formed on the prior run)
+  const EXCLUDE_TAIL=2;
+  const minI=LOOKBACK-1;
+  const maxI=n-1-hc-EXCLUDE_TAIL;
+  prog('n='+n+' hc='+hc+' pool='+Math.max(0,maxI-minI));
+  await tick();
   if(maxI<=minI+LOOKBACK){prog('insufficient data');return null;}
+
   const norm=computeNormStats(series);
-  const curFP=makeFP(series,n-1,norm);if(!curFP){prog('no fingerprint');return null;}
+  // Use smoothed fingerprint for the live query — stable across re-runs
+  const curFP=makeSmoothFP(series,norm);
+  if(!curFP){prog('no fingerprint');return null;}
+
+  // Build pool — DETERMINISTIC sort by idx as tiebreaker
   const pool=[];
   for(let i=minI;i<=maxI;i++){
     const f=makeFP(series,i,norm);if(!f)continue;
     const recency=maxI>minI?(i-minI)/(maxI-minI):1;
     const rw=Math.exp(-(1-recency)/DECAY);
-    const base=series[i].c;let hit=false;
-    for(let f2=1;f2<=hc;f2++)if(i+f2<n&&series[i+f2].c>=base*(1+target/100)){hit=true;break;}
+    const base=series[i].c;
+    let hit=false;
+    for(let f2=1;f2<=hc;f2++){
+      if((i+f2)<n&&series[i+f2].c>=base*(1+target/100)){hit=true;break;}
+    }
     pool.push({fp:f,rw,hit,idx:i,t:series[i].t,price:series[i].c});
   }
   if(pool.length<LOOKBACK+2){prog('pool too small: '+pool.length);return null;}
+
   const hitCount=pool.filter(p=>p.hit).length;
   const baseRate=hitCount/pool.length;
-  prog('pool='+pool.length+' base='+(baseRate*100).toFixed(0)+'%');await tick();
-  for(const p of pool){p.sim=distToSim(euclidDist(curFP,p.fp));p.wt=p.sim*p.rw;}
-  pool.sort((a,b)=>b.wt-a.wt);
+  prog('pool='+pool.length+' base='+(baseRate*100).toFixed(0)+'%');
+  await tick();
+
+  // Score all pool entries — STABILITY: deterministic tiebreak on idx
+  for(const p of pool){
+    p.sim=distToSim(euclidDist(curFP,p.fp));
+    p.wt=p.sim*p.rw;
+  }
+  // Sort: primary by wt desc, secondary by idx desc (deterministic)
+  pool.sort((a,b)=>b.wt-a.wt||b.idx-a.idx);
   const neighbours=pool.slice(0,Math.min(K,pool.length));
+
   let wH=0,wT=0;
   for(const nb of neighbours){wT+=nb.wt;if(nb.hit)wH+=nb.wt;}
   const confidence=wT>1e-9?wH/wT:0;
   const avgSim=neighbours.reduce((s,nb)=>s+nb.sim,0)/neighbours.length;
-  prog('conf='+(confidence*100).toFixed(0)+'% avgSim='+avgSim.toFixed(3));await tick();
-  // ML cross-validation — use lower threshold so we always get TP/FP data
+  prog('conf='+(confidence*100).toFixed(0)+'% avgSim='+avgSim.toFixed(3));
+  await tick();
+
+  // ML cross-validation — lower threshold so TP/FP are always populated
   const cvThresh=Math.max(0.3,baseRate+MIN_EDGE/100);
   const step=Math.max(1,Math.floor(pool.length/MAX_EVAL));
   const evalSet=pool.filter((_,i)=>i%step===0).slice(0,MAX_EVAL);
-  prog('ML eval '+evalSet.length+' samples...');await tick();
+  prog('ML eval '+evalSet.length+' samples (cvThresh='+(cvThresh*100).toFixed(0)+'%)...');
+  await tick();
+
   let TP=0,FP=0,TN=0,FN=0;
   for(let ei=0;ei<evalSet.length;ei++){
     const tgt=evalSet[ei];
     const sc=[];
-    for(const p of pool)if(p.idx!==tgt.idx)sc.push({hit:p.hit,wt:distToSim(euclidDist(tgt.fp,p.fp))*p.rw});
+    for(const p of pool){
+      if(p.idx===tgt.idx)continue;
+      sc.push({hit:p.hit,wt:distToSim(euclidDist(tgt.fp,p.fp))*p.rw});
+    }
     sc.sort((a,b)=>b.wt-a.wt);
-    const peers=sc.slice(0,K);if(!peers.length)continue;
-    let pw=0,ph=0;for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    const peers=sc.slice(0,K);
+    if(!peers.length)continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
     const predBuy=(pw>1e-9?ph/pw:0)>=cvThresh;
-    if(predBuy&&tgt.hit)TP++;else if(predBuy)FP++;else if(!tgt.hit)TN++;else FN++;
-    if((ei+1)%YIELD_EVERY===0||(ei+1)===evalSet.length){prog('ML '+(ei+1)+'/'+evalSet.length+' TP='+TP+' FP='+FP+' TN='+TN+' FN='+FN);await tick();}
+    if(predBuy&&tgt.hit)TP++;
+    else if(predBuy)FP++;
+    else if(!tgt.hit)TN++;
+    else FN++;
+    if((ei+1)%YIELD_EVERY===0||(ei+1)===evalSet.length){
+      prog('ML '+(ei+1)+'/'+evalSet.length+' TP='+TP+' FP='+FP+' TN='+TN+' FN='+FN);
+      await tick();
+    }
   }
   const tot=TP+FP+TN+FN;
-  const accuracy=tot>0?(TP+TN)/tot:null;
-  const precision=(TP+FP)>0?TP/(TP+FP):null;
-  const recall=(TP+FN)>0?TP/(TP+FN):null;
-  const f1=precision!=null&&recall!=null&&(precision+recall)>0?2*precision*recall/(precision+recall):null;
+  const accuracy   =tot>0?(TP+TN)/tot:null;
+  const precision  =(TP+FP)>0?TP/(TP+FP):null;
+  const recall     =(TP+FN)>0?TP/(TP+FN):null;
+  const f1         =precision!=null&&recall!=null&&(precision+recall)>0
+                    ?2*precision*recall/(precision+recall):null;
   const specificity=(TN+FP)>0?TN/(TN+FP):null;
   const mccd=Math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
-  const mcc=mccd>0?(TP*TN-FP*FN)/mccd:null;
-  prog('done acc='+(accuracy!=null?(accuracy*100).toFixed(0)+'%':'n/a')+' MCC='+(mcc!=null?mcc.toFixed(2):'n/a'));await tick();
+  const mcc        =mccd>0?(TP*TN-FP*FN)/mccd:null;
+  prog('acc='+(accuracy!=null?(accuracy*100).toFixed(0)+'%':'n/a')+' MCC='+(mcc!=null?mcc.toFixed(2):'n/a'));
+  await tick();
+
   return{confidence,n:neighbours.length,totalPool:pool.length,avgSim,pool,target,baseRate,
     metrics:{accuracy,precision,recall,f1,specificity,mcc,baseRate,TP,FP,TN,FN,evalN:tot,cvThresh}};
 }
 
-// BACKTEST — fires at base_rate + MIN_EDGE so we always have data even when live conf is low
+// ── BACKTEST ──────────────────────────────────────────────────────────────────
+// Fires at base_rate+MIN_EDGE (lower than live threshold) so we always get data
 async function runBacktest(trainPool,testPool,liveMinConf,rtFee,target,baseTrainHitRate,onProg){
   const prog=onProg||(()=>{});
-  if(!trainPool||!testPool||testPool.length<5)return null;
-  const btThresh=Math.max(baseTrainHitRate+MIN_EDGE/100,Math.min(liveMinConf,baseTrainHitRate+0.20));
-  prog('train='+trainPool.length+' test='+testPool.length+' thresh='+(btThresh*100).toFixed(0)+'%');await tick();
+  if(!trainPool||!testPool||testPool.length<5) return null;
+  const btThresh=Math.max(
+    baseTrainHitRate+MIN_EDGE/100,
+    Math.min(liveMinConf, baseTrainHitRate+0.20)
+  );
+  prog('train='+trainPool.length+' test='+testPool.length+' thresh='+(btThresh*100).toFixed(0)+'%');
+  await tick();
   const trades=[];let equity=0;
   for(let ti=0;ti<testPool.length;ti++){
     const tgt=testPool[ti];
     const sc=trainPool.map(p=>({hit:p.hit,wt:distToSim(euclidDist(tgt.fp,p.fp))*p.rw}));
-    sc.sort((a,b)=>b.wt-a.wt);const peers=sc.slice(0,K);if(!peers.length)continue;
-    let pw=0,ph=0;for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    sc.sort((a,b)=>b.wt-a.wt);
+    const peers=sc.slice(0,K);if(!peers.length)continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
     const conf=pw>1e-9?ph/pw:0;
-    if(conf>=btThresh&&(conf-baseTrainHitRate)*100>=MIN_EDGE){
-      const pnl=tgt.hit?target-rtFee:-rtFee;equity+=pnl;
+    const edge=(conf-baseTrainHitRate)*100;
+    if(conf>=btThresh&&edge>=MIN_EDGE){
+      const pnl=tgt.hit?target-rtFee:-rtFee;
+      equity+=pnl;
       trades.push({t:tgt.t,entry:tgt.price,conf:conf*100,hit:tgt.hit,pnl,equity});
     }
     if((ti+1)%10===0){prog('test '+(ti+1)+'/'+testPool.length+'...');await tick();}
   }
-  if(!trades.length)return{trades:[],wins:0,losses:0,winRate:null,totalPnl:0,avgWin:0,avgLoss:0,btThresh,note:'No signals fired'};
-  const wins=trades.filter(t=>t.hit),losses=trades.filter(t=>!t.hit);
-  const winRate=wins.length/trades.length,totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
-  prog(trades.length+' trades, '+(winRate*100).toFixed(0)+'% win, '+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'% P&L');await tick();
-  return{trades,wins:wins.length,losses:losses.length,winRate,totalPnl,
+  if(!trades.length) return{trades:[],wins:0,losses:0,winRate:null,totalPnl:0,
+    avgWin:0,avgLoss:0,btThresh,note:'No signals fired at this threshold'};
+  const wins=trades.filter(t=>t.hit);
+  const losses=trades.filter(t=>!t.hit);
+  const winRate=wins.length/trades.length;
+  const totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
+  prog(trades.length+' trades, '+(winRate*100).toFixed(0)+'% win, '+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'%');
+  await tick();
+  return{trades,wins:wins.length,losses:losses.length,winRate,totalPnl,btThresh,
     avgWin:wins.length?wins.reduce((a,t)=>a+t.pnl,0)/wins.length:0,
-    avgLoss:losses.length?losses.reduce((a,t)=>a+t.pnl,0)/losses.length:0,btThresh};
+    avgLoss:losses.length?losses.reduce((a,t)=>a+t.pnl,0)/losses.length:0};
 }
 
-// TRADE PRICING
+// ── TRADE PRICING ─────────────────────────────────────────────────────────────
 function calcTrade(lastPrice,target,makerFee,takerFee,entryBuf){
   const entryPrice=lastPrice*(1+entryBuf/100);
   const sellPrice=entryPrice*(1+(target+takerFee)/100)/(1-makerFee/100);
@@ -534,52 +661,83 @@ function calcTrade(lastPrice,target,makerFee,takerFee,entryBuf){
   return{entryPrice,sellPrice,actualNet};
 }
 
-// SELL TIMER
+// ── SELL TIMER ────────────────────────────────────────────────────────────────
 let sellTimerInterval=null;
 function startSellTimer(horizonMinutes,candleMinutes){
   clearInterval(sellTimerInterval);
   const now=Date.now(),ms=candleMinutes*60*1000;
   const closeTime=now+(ms-(now%ms))+(horizonMinutes/candleMinutes-1)*ms;
   function update(){
-    const cdEl=document.getElementById('sell-countdown'),clkEl=document.getElementById('sell-clock');
+    const cdEl=document.getElementById('sell-countdown');
+    const clkEl=document.getElementById('sell-clock');
     if(!cdEl&&!clkEl){clearInterval(sellTimerInterval);return;}
-    if(clkEl)clkEl.textContent=new Date(closeTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(clkEl) clkEl.textContent=new Date(closeTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
     const rem=closeTime-Date.now();
     if(rem<=0){if(cdEl)cdEl.textContent='NOW -- exit position';clearInterval(sellTimerInterval);return;}
     const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000),s=Math.floor((rem%60000)/1000);
-    if(cdEl)cdEl.textContent=(h>0?h+'h ':'')+m+'m '+s+'s';
+    if(cdEl) cdEl.textContent=(h>0?h+'h ':'')+m+'m '+s+'s';
   }
   update();sellTimerInterval=setInterval(update,1000);
 }
 
-// STATE
-let busy=false,seriesMap={};
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────────
+let busy=false, seriesMap={};
 
-// MAIN ANALYSIS
+// HYSTERESIS STATE: stores last decision per horizon label
+// { [hzLabel]: { state, confidence, ts } }
+let hystState={};
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
 async function runAnalysis(){
-  if(busy)return;busy=true;clearInterval(sellTimerInterval);
+  if(busy)return;
+  busy=true;
+  clearInterval(sellTimerInterval);
   document.getElementById('runBtn').disabled=true;
   document.getElementById('pulse').className='pulse busy';
+
   const symbol=document.getElementById('pairSelect').value;
-  const liveMinConf=Math.max(0.40,Math.min(0.95,parseFloat(document.getElementById('minConf').value)/100||0.55));
+  const rawMinConf=Math.max(0.40,Math.min(0.95,parseFloat(document.getElementById('minConf').value)/100||0.55));
   const makerFee=parseFloat(document.getElementById('makerFee').value)||0;
   const takerFee=parseFloat(document.getElementById('takerFee').value)||0;
   const entryBuf=parseFloat(document.getElementById('entryBuffer').value)||0.10;
   const rtFee=makerFee+takerFee;
-  initLog();log('&#128269;','Analyzing '+symbol,'');log('&#128225;','Sources','5 timeframes, 9 KNN features, lookback='+LOOKBACK);await tick();
+
+  initLog();
+  log('&#128269;','Analyzing '+symbol,'');
+  log('&#128225;','Stability: smoothed fingerprint ('+SMOOTH_N+' candles) + hysteresis (+'+
+    (HYST_UP*100).toFixed(0)+'pp entry / -'+(HYST_DN*100).toFixed(0)+'pp exit)');
+  await tick();
+
   // FETCH
   seriesMap={};let fetchErrors=0;
   for(const src of SOURCES){
     log('&#9203;','Fetching '+src.label+'...','');
-    try{const candles=await fetchCandles(symbol,src.interval,src.limit);seriesMap[src.id]=buildPhysics(candles);replaceLog('&#9989;',src.label,candles.length+' candles');}
-    catch(e){replaceLog('&#10060;',src.label,e.message,true);fetchErrors++;}
+    try{
+      const candles=await fetchCandles(symbol,src.interval,src.limit);
+      seriesMap[src.id]=buildPhysics(candles);
+      replaceLog('&#9989;',src.label,candles.length+' candles');
+    }catch(e){replaceLog('&#10060;',src.label,e.message,true);fetchErrors++;}
     await tick();
   }
-  if(fetchErrors===SOURCES.length){log('&#128683;','All fetches failed','Check connection',true);finishRun(false);return;}
-  // LIVE SNAPSHOT
-  const lp=(()=>{for(const id of['30m','1h','4h']){const s=seriesMap[id];if(s&&s.length){const l=s[s.length-1];return{price:l.c,vel:l.vel,acc:l.acc,jrk:l.jrk,src:id,candle:l};}}return null;})();
-  // KNN
-  log('&#129504;','KNN pattern match...','K='+K+', dims='+DIMS.length);await tick();
+  if(fetchErrors===SOURCES.length){
+    log('&#128683;','All fetches failed','Check connection',true);finishRun(false);return;
+  }
+
+  // Live snapshot using SMOOTHED physics
+  const lp=(()=>{
+    for(const id of['30m','1h','4h']){
+      const s=seriesMap[id];
+      if(s&&s.length>=SMOOTH_N+2){
+        const smoothed=smoothedLivePhysics(s);
+        return{price:s[s.length-1].c,vel:smoothed.vel,acc:smoothed.acc,jrk:smoothed.jrk,src:id,candle:smoothed};
+      }
+    }
+    return null;
+  })();
+
+  // KNN PER HORIZON
+  log('&#129504;','KNN pattern match...','K='+K+', smooth='+SMOOTH_N+', excl-tail=2');
+  await tick();
   const hResults=[];
   for(const hz of HORIZONS){
     log('&#9203;',hz.label,'starting...');
@@ -588,29 +746,63 @@ async function runAnalysis(){
       const s=seriesMap[sid];if(!s)continue;
       const src=SOURCES.find(x=>x.id===sid);
       try{
-        const r=await knnFull(s,hz.minutes,src.minutes,hz.target,msg=>replaceLog('&#9881;',hz.label+'/'+sid,msg));
-        if(r)srcR.push({srcId:sid,candleMinutes:src.minutes,...r});
+        const r=await knnFull(s,hz.minutes,src.minutes,hz.target,
+          msg=>replaceLog('&#9881;',hz.label+'/'+sid,msg));
+        if(r) srcR.push({srcId:sid,candleMinutes:src.minutes,...r});
       }catch(e){replaceLog('&#10060;',hz.label+'/'+sid,e.message,true);}
       await tick();
     }
+    // Weighted average confidence
     let conf=null,nn=0,tp=0,wSum=0,wConf=0,avgSim=0,baseRate=null;
-    for(const r of srcR){const w=r.avgSim||0.5;wConf+=r.confidence*w;wSum+=w;nn=Math.max(nn,r.n);tp+=r.totalPool;avgSim+=r.avgSim;baseRate=baseRate==null?r.baseRate:(baseRate+r.baseRate)/2;}
+    for(const r of srcR){
+      const w=r.avgSim||0.5;
+      wConf+=r.confidence*w;wSum+=w;
+      nn=Math.max(nn,r.n);tp+=r.totalPool;avgSim+=r.avgSim;
+      baseRate=baseRate==null?r.baseRate:(baseRate+r.baseRate)/2;
+    }
     if(srcR.length){conf=wSum>1e-9?wConf/wSum:null;avgSim/=srcR.length;}
     const bsrc=srcR.length?srcR.reduce((a,b)=>a.totalPool>b.totalPool?a:b):null;
     const edge=conf!=null&&baseRate!=null?(conf-baseRate)*100:null;
+
+    // HYSTERESIS: apply +/- band around minConf
+    // Entry: must beat minConf + HYST_UP
+    // Exit:  drops below minConf - HYST_DN (sticky in between)
+    const entryThresh=rawMinConf+HYST_UP;
+    const exitThresh=rawMinConf-HYST_DN;
+    const prev=hystState[hz.label];
+    let hystFull=false;
+    if(conf!=null&&(edge||0)>=MIN_EDGE){
+      if(prev&&prev.validity==='full'){
+        // Already in a full signal — stay until conf drops below exit threshold
+        hystFull=conf>=exitThresh;
+      }else{
+        // New signal — require conf to beat entry threshold
+        hystFull=conf>=entryThresh;
+      }
+    }
+
     let validity='none';
     if(conf!=null&&nn>=3){
-      if(conf>=liveMinConf&&(edge||0)>=MIN_EDGE)validity='full';
-      else if((edge||-99)>=MIN_EDGE)validity='lean';
+      if(hystFull) validity='full';
+      else if((edge||-99)>=MIN_EDGE) validity='lean';
     }
+    // Update hysteresis memory
+    hystState[hz.label]={validity,confidence:conf,ts:Date.now()};
+
     const expNet=(conf!=null&&(edge||-99)>=0)?conf*hz.target-(1-conf)*rtFee:null;
     const srcConfs=srcR.map(r=>r.confidence);
     const srcAgree=srcConfs.length>1?(Math.max(...srcConfs)-Math.min(...srcConfs))<0.12:true;
-    hResults.push({hz,confidence:conf,n:nn,totalPool:tp,avgSim,srcResults:srcR,bsrc,validity,edge,expNet,baseRate,srcAgree});
+
+    hResults.push({hz,confidence:conf,n:nn,totalPool:tp,avgSim,srcResults:srcR,bsrc,
+      validity,edge,expNet,baseRate,srcAgree,entryThresh,exitThresh});
+
     const icon=validity==='full'?'&#128994;':validity==='lean'?'&#128993;':'&#9898;';
-    replaceLog(icon,hz.label,conf!=null?'conf='+(conf*100).toFixed(0)+'% edge='+(edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'n/a')+' ev='+(expNet!=null?(expNet>=0?'+':'')+expNet.toFixed(2)+'%':'n/a'):'no data');
+    replaceLog(icon,hz.label,
+      conf!=null?'conf='+(conf*100).toFixed(0)+'% edge='+(edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'n/a')
+        +' ev='+(expNet!=null?(expNet>=0?'+':'')+expNet.toFixed(2)+'%':'n/a'):'no data');
     await tick();
   }
+
   // BACKTEST
   log('&#128202;','Backtesting (out-of-sample)...','');await tick();
   const btResults={};
@@ -618,81 +810,107 @@ async function runAnalysis(){
     if(!r.bsrc||!r.bsrc.pool||r.bsrc.pool.length<30)continue;
     try{
       const split=Math.floor(r.bsrc.pool.length*0.7);
-      const trainPool=r.bsrc.pool.slice(0,split),testPool=r.bsrc.pool.slice(split);
+      const trainPool=r.bsrc.pool.slice(0,split);
+      const testPool=r.bsrc.pool.slice(split);
       if(trainPool.length<10||testPool.length<5)continue;
       const baseTrainHitRate=trainPool.filter(p=>p.hit).length/trainPool.length;
-      const bt=await runBacktest(trainPool,testPool,liveMinConf,rtFee,r.hz.target,baseTrainHitRate,msg=>replaceLog('&#128202;','BT '+r.hz.label,msg));
-      if(bt)btResults[r.hz.label]=bt;
+      const bt=await runBacktest(trainPool,testPool,rawMinConf,rtFee,r.hz.target,baseTrainHitRate,
+        msg=>replaceLog('&#128202;','BT '+r.hz.label,msg));
+      if(bt) btResults[r.hz.label]=bt;
     }catch(e){replaceLog('&#10060;','BT '+r.hz.label,e.message,true);}
     await tick();
   }
+
   // DECISION
-  const decision=buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,liveMinConf);
-  log(decision.state==='GO'?'&#127919;':decision.state==='SOFT'?'&#8599;':decision.state==='WATCH'?'&#9680;':'&#9208;','Decision: '+decision.stateLabel,decision.oneLiner);await tick();
-  try{renderAll({symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,liveMinConf});}
+  const decision=buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,rawMinConf);
+  log(decision.state==='GO'?'&#127919;':decision.state==='SOFT'?'&#8599;':decision.state==='WATCH'?'&#9680;':'&#9208;',
+    'Decision: '+decision.stateLabel,decision.oneLiner);
+  await tick();
+
+  try{renderAll({symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,rawMinConf});}
   catch(e){log('&#128683;','Render error',e.message,true);}
   finishRun(true);
 }
 
-// DECISION ENGINE
-function buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,liveMinConf){
-  const withEV=hResults.filter(r=>r.expNet!=null&&r.expNet>0).map(r=>{
-    const bt=btResults[r.hz.label];
-    const boost=bt&&bt.winRate!=null?(bt.winRate>=0.55?1.1:bt.winRate<0.45?0.85:1.0):1.0;
-    return{...r,adjEV:r.expNet*boost};
-  }).sort((a,b)=>b.adjEV-a.adjEV);
+// ── DECISION ENGINE ───────────────────────────────────────────────────────────
+function buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,rawMinConf){
+  const withEV=hResults
+    .filter(r=>r.expNet!=null&&r.expNet>0)
+    .map(r=>{
+      const bt=btResults[r.hz.label];
+      const boost=bt&&bt.winRate!=null?(bt.winRate>=0.55?1.1:bt.winRate<0.45?0.85:1.0):1.0;
+      return{...r,adjEV:r.expNet*boost};
+    })
+    .sort((a,b)=>b.adjEV-a.adjEV);
+
   const fullH=withEV.filter(r=>r.validity==='full');
   const leanH=withEV.filter(r=>r.validity==='lean');
   const GO_THRESH=0.30;
   const bestFull=fullH.find(r=>r.adjEV>=GO_THRESH);
   const anyFull=fullH.length?fullH[0]:null;
+
   // Non-overlapping stack
   const stackPool=[...fullH,...leanH].sort((a,b)=>b.adjEV-a.adjEV);
   const stackPlan=[];let stackTotal=0;
   for(const r of stackPool){
     if(stackPlan.length>=4)break;
-    const overlap=stackPlan.some(p=>Math.min(p.hz.minutes,r.hz.minutes)/Math.max(p.hz.minutes,r.hz.minutes)>0.5);
+    const overlap=stackPlan.some(p=>
+      Math.min(p.hz.minutes,r.hz.minutes)/Math.max(p.hz.minutes,r.hz.minutes)>0.5);
     if(!overlap){stackPlan.push(r);stackTotal+=r.adjEV;}
   }
-  const buildingUp=lp?hResults.filter(r=>r.validity==='none'&&lp.candle.vel>0&&lp.candle.acc>0&&(r.edge||-99)>=0):[];
+
+  const buildingUp=lp?hResults.filter(r=>
+    r.validity==='none'&&lp.candle.vel>0&&lp.candle.acc>0&&(r.edge||-99)>=0):[];
+
   let state,stateLabel,oneLiner,primaryHorizon;
   if(bestFull){
-    const stackBetter=stackPlan.length>=2&&stackTotal>bestFull.adjEV*1.3&&stackPlan.some(r=>r.validity==='full');
+    const stackBetter=stackPlan.length>=2&&stackTotal>bestFull.adjEV*1.3
+      &&stackPlan.some(r=>r.validity==='full');
     if(stackBetter){
       state='SOFT';stateLabel='Soft Signal';
-      oneLiner=bestFull.hz.label+' trade available (+'+bestFull.adjEV.toFixed(2)+'% EV) but '+stackPlan.length+'-trade stack looks better (~+'+stackTotal.toFixed(2)+'% combined). Details below.';
+      oneLiner=bestFull.hz.label+' trade available (+'+bestFull.adjEV.toFixed(2)+'% EV) but '
+        +stackPlan.length+'-trade stack looks better (~+'+stackTotal.toFixed(2)+'% combined).';
       primaryHorizon=bestFull;
     }else{
       state='GO';stateLabel='Take the Trade';
-      oneLiner=bestFull.hz.label+' horizon, '+(bestFull.confidence*100).toFixed(0)+'% KNN confidence, +'+bestFull.edge.toFixed(0)+'pp edge, expected net ~+'+bestFull.adjEV.toFixed(2)+'%.';
+      oneLiner=bestFull.hz.label+' horizon, '+(bestFull.confidence*100).toFixed(0)
+        +'% KNN confidence, +'+(bestFull.edge||0).toFixed(0)+'pp edge, ~+'
+        +bestFull.adjEV.toFixed(2)+'% expected net.';
       primaryHorizon=bestFull;
     }
   }else if(anyFull){
     state='SOFT';stateLabel='Soft Signal';
-    oneLiner=anyFull.hz.label+' horizon has solid confidence ('+(anyFull.confidence*100).toFixed(0)+'%, +'+anyFull.edge.toFixed(0)+'pp edge) but modest return (~+'+anyFull.adjEV.toFixed(2)+'% EV). Worth taking as part of a multi-trade day.';
+    oneLiner=anyFull.hz.label+' has solid confidence ('+(anyFull.confidence*100).toFixed(0)
+      +'%, +'+(anyFull.edge||0).toFixed(0)+'pp edge) but modest EV (+'+anyFull.adjEV.toFixed(2)+'%).';
     primaryHorizon=anyFull;
   }else if(leanH.length>=2){
     state='SOFT';stateLabel='Stack Opportunity';
     const top2=leanH.slice(0,2);
-    oneLiner='No single high-confidence trade, but '+leanH.length+' horizons have positive edge. Stack '+top2.map(r=>r.hz.label).join(' + ')+' for ~+'+top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined. Lower conviction -- size down.';
+    oneLiner='No single high-confidence trade. Stack '+top2.map(r=>r.hz.label).join('+')
+      +' for ~+'+top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined. Lower conviction -- size down.';
     primaryHorizon=leanH[0];
   }else if(leanH.length===1){
     state='WATCH';stateLabel='Cautious Watch';
     const r=leanH[0];
-    oneLiner=r.hz.label+' horizon shows +'+(r.edge||0).toFixed(0)+'pp edge ('+(r.confidence*100).toFixed(0)+'% KNN) but is below the '+(liveMinConf*100).toFixed(0)+'% confidence threshold. Not a clean entry yet.';
+    oneLiner=r.hz.label+' shows +'+(r.edge||0).toFixed(0)+'pp edge ('
+      +(r.confidence*100).toFixed(0)+'% KNN) but is below the '
+      +(rawMinConf*100).toFixed(0)+'% threshold. Not a clean entry yet.';
     primaryHorizon=null;
   }else if(buildingUp.length>0){
     state='WATCH';stateLabel='Signal Building';
-    oneLiner='No edge on any horizon yet, but velocity and acceleration are positive. A signal may develop in the next candle or two.';
+    oneLiner='No edge yet but velocity and acceleration are positive. Re-analyze in the next candle or two.';
     primaryHorizon=null;
   }else{
     state='HOLD';stateLabel='Stand Down';
-    const bestAny=hResults.filter(r=>r.confidence!=null).sort((a,b)=>(b.edge||-99)-(a.edge||-99))[0];
+    const bestAny=hResults.filter(r=>r.confidence!=null)
+      .sort((a,b)=>(b.edge||-99)-(a.edge||-99))[0];
     oneLiner=bestAny&&(bestAny.edge||-99)>=0
-      ?'No tradeable edge now. Best: '+bestAny.hz.label+' at '+(bestAny.confidence*100).toFixed(0)+'% KNN (+'+bestAny.edge.toFixed(0)+'pp) -- not enough to act on. Watch for improvement.'
-      :'No horizon shows a positive edge over the base rate. Patience.';
+      ?'Best available: '+bestAny.hz.label+' at '+(bestAny.confidence*100).toFixed(0)
+        +'% KNN (+'+(bestAny.edge||0).toFixed(0)+'pp) -- not enough to act on.'
+      :'No horizon shows positive edge over base rate. Patience.';
     primaryHorizon=null;
   }
+
   let tradeDetails=null;
   if(primaryHorizon&&lp&&(state==='GO'||state==='SOFT')){
     const td=calcTrade(lp.price,primaryHorizon.hz.target,makerFee,takerFee,entryBuf);
@@ -701,139 +919,213 @@ function buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,li
       confidence:primaryHorizon.confidence,validity:primaryHorizon.validity,
       candleMinutes:src?src.minutes:primaryHorizon.hz.minutes};
   }
-  return{state,stateLabel,oneLiner,primaryHorizon,tradeDetails,stackPlan,stackTotal,
-    fullHorizons:fullH,leanHorizons:leanH,buildingUp,withEV};
+
+  return{state,stateLabel,oneLiner,primaryHorizon,tradeDetails,
+    stackPlan,stackTotal,fullHorizons:fullH,leanHorizons:leanH,buildingUp,withEV};
 }
 
 function finishRun(ok){
-  busy=false;document.getElementById('runBtn').disabled=false;
+  busy=false;
+  document.getElementById('runBtn').disabled=false;
   document.getElementById('pulse').className=ok?'pulse live':'pulse err';
   document.getElementById('lastTs').textContent=new Date().toLocaleTimeString();
   saveSettings();
 }
 
-// HELPERS
+// ── HELPERS ───────────────────────────────────────────────────────────────────
 function fc(v){return v>0?'pos':v<0?'neg':'neu';}
-function fp(v,d){d=d||4;return(v>=0?'+':'')+v.toFixed(d)+'%';}
+function fp(v,d){d=d!=null?d:4;return(v>=0?'+':'')+v.toFixed(d)+'%';}
 function mfmt(v){return v===null?'--':(v*100).toFixed(1)+'%';}
-function mcls(v,g,ok){g=g||0.6;ok=ok||0.5;if(v===null)return'mna';if(v>=g)return'mhi';if(v>=ok)return'mmid';return'mlo';}
+function mcls(v,g,ok){
+  g=g!=null?g:0.6;ok=ok!=null?ok:0.5;
+  if(v===null)return'mna';if(v>=g)return'mhi';if(v>=ok)return'mmid';return'mlo';
+}
 function pf(p){return'$'+p.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 function tick(){return new Promise(r=>setTimeout(r,20));}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
 function toggleTable(id){const el=document.getElementById(id);if(el)el.classList.toggle('open');}
 
-// REC BODY
-function buildRecBody(decision,btResults,liveMinConf,rtFee){
-  const{state,stateLabel,primaryHorizon,stackPlan,stackTotal,leanHorizons,buildingUp}=decision;
+// ── STABILITY BADGE ───────────────────────────────────────────────────────────
+// Compare current decision to last stored in hystState timestamps
+function stabilityInfo(hResults){
+  // Count how many horizons changed validity since last run
+  let changed=0,total=0;
+  for(const r of hResults){
+    const prev=hystState[r.hz.label];
+    if(!prev||!prev.ts)continue;
+    total++;
+    const age=(Date.now()-prev.ts)/1000;
+    // Only flag as changed if this run differs from what was stored AND it was recent
+    if(age<120&&prev.validity!==r.validity) changed++;
+  }
+  if(total===0) return{label:'First run',cls:'new'};
+  if(changed===0) return{label:'Stable (no horizon changes)',cls:'stable'};
+  if(changed<=1)  return{label:'Minor shift ('+changed+' horizon)',cls:'shifted'};
+  return{label:'Significant shift ('+changed+' horizons)',cls:'shifted'};
+}
+
+// ── REC BODY ──────────────────────────────────────────────────────────────────
+function buildRecBody(decision,btResults,rawMinConf,rtFee){
+  const{state,stateLabel,primaryHorizon,stackPlan,stackTotal,leanHorizons}=decision;
   const bt=primaryHorizon?btResults[primaryHorizon.hz.label]:null;
   if(state==='GO'&&primaryHorizon){
     const edge=(primaryHorizon.edge||0).toFixed(0);
     const conf=(primaryHorizon.confidence*100).toFixed(0);
     const br=primaryHorizon.baseRate!=null?Math.round(primaryHorizon.baseRate*100):null;
-    return'The pattern model finds a <b>'+conf+'% historical hit rate</b> on the <b>'+primaryHorizon.hz.label+'</b> horizon'
+    return'The pattern model finds a <b>'+conf+'% historical hit rate</b> on the <b>'
+      +primaryHorizon.hz.label+'</b> horizon'
       +' -- <b>+'+edge+' points above the '+(br||'?')+'% base rate</b>'
       +' across <b>'+primaryHorizon.totalPool+'</b> comparable historical setups.'
-      +(bt&&bt.winRate!=null?' Backtested over '+(bt.wins+bt.losses)+' out-of-sample trades: <b class="hi">'+(bt.winRate*100).toFixed(0)+'% win rate</b>, <b class="hi">'+(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% total P&L</b> after fees.':'')
+      +(bt&&bt.winRate!=null?' Backtested over '+(bt.wins+bt.losses)+' out-of-sample trades: <b class="hi">'
+        +(bt.winRate*100).toFixed(0)+'% win rate</b>, <b class="hi">'
+        +(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% total P&amp;L</b> after fees.':'')
       +'<br><br><b>Trade:</b> Limit buy now, limit sell at target. If limit sell not hit, market sell at candle close.';
   }
   if(state==='SOFT'&&stateLabel==='Stack Opportunity'){
     const top2=leanHorizons.slice(0,2);
-    return'No single horizon clears the confidence threshold right now, but <b>'+leanHorizons.length+' horizons</b> show a positive edge above the base rate.'
-      +'<br><br><b>Suggested stack:</b> '+top2.map(r=>'<b>'+r.hz.label+'</b> (+'+r.adjEV.toFixed(2)+'% EV, '+(r.confidence*100).toFixed(0)+'% conf)').join(' then ')
-      +' = <b class="hi">~+'+top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined</b>.'
-      +'<br><br><span class="warn">Below the '+(liveMinConf*100).toFixed(0)+'% full-confidence threshold. Use smaller position sizes.</span>';
+    return'No single horizon clears the confidence threshold, but <b>'+leanHorizons.length
+      +' horizons</b> show a positive edge above the base rate.'
+      +'<br><br><b>Suggested stack:</b> '
+      +top2.map(r=>'<b>'+r.hz.label+'</b> (+'
+        +r.adjEV.toFixed(2)+'% EV, '+(r.confidence*100).toFixed(0)+'% conf)').join(' then ')
+      +' = <b class="hi">~+'
+      +top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined</b>.'
+      +'<br><br><span class="warn">Below the '+(rawMinConf*100).toFixed(0)
+      +'% full-confidence threshold. Use smaller position sizes.</span>';
   }
   if(state==='SOFT'&&primaryHorizon){
     const conf=(primaryHorizon.confidence*100).toFixed(0);
     const edge=(primaryHorizon.edge||0).toFixed(0);
-    return'The <b>'+primaryHorizon.hz.label+'</b> horizon shows a solid edge -- <b>'+conf+'% KNN confidence</b>, <b>+'+edge+'pp above base rate</b>.'
-      +(stackPlan.length>=2?' A '+stackPlan.length+'-trade stack across '+stackPlan.map(r=>r.hz.label).join('/')+'  could reach ~+'+stackTotal.toFixed(2)+'% combined.':'')
-      +(primaryHorizon.validity==='lean'?'<br><br><span class="warn">Confidence is below the '+(liveMinConf*100).toFixed(0)+'% full-send threshold. Consider a smaller position.</span>':'');
+    return'The <b>'+primaryHorizon.hz.label+'</b> horizon shows a solid edge -- <b>'
+      +conf+'% KNN confidence</b>, <b>+'+edge+'pp above base rate</b>.'
+      +(stackPlan.length>=2?' A '+stackPlan.length+'-trade stack across '
+        +stackPlan.map(r=>r.hz.label).join('/')
+        +' could reach ~+'+stackTotal.toFixed(2)+'% combined.':'')
+      +(primaryHorizon.validity==='lean'?'<br><br><span class="warn">Below the '
+        +(rawMinConf*100).toFixed(0)+'% full-send threshold. Consider a smaller position.</span>':'');
   }
   if(state==='WATCH'){
     const r=leanHorizons&&leanHorizons[0];
-    if(r)return'The <b>'+r.hz.label+'</b> horizon shows +'+r.edge.toFixed(0)+'pp edge above base rate ('+(r.confidence*100).toFixed(0)+'% KNN) but is below the '+(liveMinConf*100).toFixed(0)+'% confidence threshold. Not a clean setup right now.<br><br><span class="warn">Re-analyze in the next candle or two.</span>';
-    return'Velocity and acceleration are positive but no horizon has cleared the edge threshold yet. <span class="warn">Re-analyze shortly.</span>';
+    if(r) return'The <b>'+r.hz.label+'</b> horizon shows +'
+      +(r.edge||0).toFixed(0)+'pp edge ('+(r.confidence*100).toFixed(0)+'% KNN)'
+      +' but falls below the '+(rawMinConf*100).toFixed(0)+'% confidence threshold.'
+      +'<br><br><span class="warn">Re-analyze in the next candle or two.</span>';
+    return'Velocity and acceleration are positive but no horizon has cleared the edge threshold yet.'
+      +' <span class="warn">Re-analyze shortly.</span>';
   }
-  return'No horizon shows a meaningful edge over the base rate right now. KNN finds no historical precedent for a sustained move from this momentum fingerprint.<br><br><span class="warn">Patience -- re-analyze when conditions shift.</span>';
+  return'No horizon shows a meaningful edge over the base rate right now.'
+    +' KNN finds no historical precedent for a sustained move from this momentum fingerprint.'
+    +'<br><br><span class="warn">Patience -- re-analyze when conditions shift.</span>';
 }
 
-// RENDER
+// ── RENDER ────────────────────────────────────────────────────────────────────
 function renderAll(opts){
-  const{symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,liveMinConf}=opts;
+  const{symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,rawMinConf}=opts;
   const{state,stateLabel,oneLiner,tradeDetails,stackPlan,stackTotal,primaryHorizon}=decision;
   let h='';
   const cc=state==='GO'?'go':state==='SOFT'?'soft':state==='WATCH'?'watch':'hold';
+  const stab=stabilityInfo(hResults);
 
-  // SECTION 1: RECOMMENDATION
+  // ── SECTION 1: RECOMMENDATION ──
   h+='<div class="sec-head"><div class="sec-title">Section 1 -- Recommendation</div>'
     +'<div class="sec-sub">'+symbol+' &middot; '+new Date().toLocaleTimeString()+'</div></div>'
     +'<div class="rec-card '+cc+'">'
     +'<div class="rec-eyebrow">Wave Analysis &middot; '+symbol+'</div>'
-    +'<div class="rec-action '+cc+'">'+(state==='GO'?'&#9650; TAKE THE TRADE':state==='SOFT'?'&#8599; SOFT SIGNAL':state==='WATCH'?'&#9680; WATCH -- SIGNAL BUILDING':'&mdash; HOLD / WAIT')+'</div>'
+    +'<div class="rec-action '+cc+'">'
+    +(state==='GO'?'&#9650; TAKE THE TRADE':state==='SOFT'?'&#8599; SOFT SIGNAL'
+      :state==='WATCH'?'&#9680; WATCH -- SIGNAL BUILDING':'&mdash; HOLD / WAIT')+'</div>'
+    +'<div class="stab-row">'
+    +'<span class="stab-badge '+stab.cls+'">'+stab.label+'</span>'
+    +'<span class="stab-conf">Smoothed over <b>'+SMOOTH_N+'</b> completed candles &middot; '
+    +'hysteresis +'+(HYST_UP*100).toFixed(0)+'pp/&minus;'+(HYST_DN*100).toFixed(0)+'pp</span>'
+    +'</div>'
     +'<div class="rec-disclaimer">&#9888; Model output only -- not financial advice. Past patterns do not guarantee future results.</div>'
-    +'<div class="rec-body">'+buildRecBody(decision,btResults,liveMinConf,rtFee)+'</div>';
+    +'<div class="rec-body">'+buildRecBody(decision,btResults,rawMinConf,rtFee)+'</div>';
 
+  // Trade details box
   if(tradeDetails&&lp){
-    const td=tradeDetails;const isLean=td.validity==='lean';
+    const td=tradeDetails;
+    const isLean=td.validity==='lean';
     h+='<div class="trade-box">'
       +'<div class="trade-box-title">Trade Details &middot; '+td.horizon.label+' horizon &middot; target +'
       +td.target.toFixed(2)+'% gross'+(isLean?' &middot; &#9888; below confidence threshold -- size down':'')+'</div>'
-      +'<div class="trade-row"><span class="trade-key">Limit buy</span><span class="trade-val buy">'+pf(td.entryPrice)+'</span></div>'
-      +'<div class="trade-note">+'+entryBuf.toFixed(2)+'% above last '+pf(lp.price)+' -- ensures fill despite manual entry lag</div>'
-      +'<div class="trade-row"><span class="trade-key">Limit sell</span><span class="trade-val sell">'+pf(td.sellPrice)+'</span></div>'
-      +'<div class="trade-note">Set immediately after buy fills -- captures target if hit before candle closes</div>'
-      +'<div class="trade-row"><span class="trade-key">Net after fees</span><span class="trade-val net">+'+td.actualNet.toFixed(3)+'%</span></div>'
-      +'<div class="trade-math"><b>Fee math:</b> Buy '+pf(td.entryPrice)+' (taker '+takerFee.toFixed(2)+'%)'
-      +' &rarr; Sell '+pf(td.sellPrice)+' (maker '+makerFee.toFixed(2)+'%)'
-      +' &rarr; Net <b>+'+td.actualNet.toFixed(3)+'%</b>'
-      +' &nbsp;|&nbsp; Round-trip: '+rtFee.toFixed(2)+'%'
-      +' &nbsp;|&nbsp; Order type: <b>limit buy &rarr; limit sell</b></div>'
+      +'<div class="trade-row"><span class="trade-key">Limit buy</span>'
+      +'<span class="trade-val buy">'+pf(td.entryPrice)+'</span></div>'
+      +'<div class="trade-note">+'+entryBuf.toFixed(2)+'% above last '+pf(lp.price)+'</div>'
+      +'<div class="trade-row"><span class="trade-key">Limit sell</span>'
+      +'<span class="trade-val sell">'+pf(td.sellPrice)+'</span></div>'
+      +'<div class="trade-note">Set immediately after buy fills</div>'
+      +'<div class="trade-row"><span class="trade-key">Net after fees</span>'
+      +'<span class="trade-val net">+'+td.actualNet.toFixed(3)+'%</span></div>'
+      +'<div class="trade-math"><b>Fee math:</b> buy '+pf(td.entryPrice)
+      +' (taker '+takerFee.toFixed(2)+'%) &rarr; sell '+pf(td.sellPrice)
+      +' (maker '+makerFee.toFixed(2)+'%) &rarr; net <b>+'+td.actualNet.toFixed(3)+'%</b>'
+      +' &nbsp;|&nbsp; round-trip '+rtFee.toFixed(2)+'%</div>'
       +'</div>';
+
     if(stackPlan.length>=2){
-      h+='<div class="stack-plan"><div class="stack-title">Multi-Trade Stack &middot; target ~+'+stackTotal.toFixed(2)+'% combined today</div>'
+      h+='<div class="stack-plan">'
+        +'<div class="stack-title">Multi-Trade Stack &middot; ~+'+stackTotal.toFixed(2)+'% combined today</div>'
         +'<div class="stack-steps">';
       for(const r of stackPlan){
         const isCurrent=r.hz.label===td.horizon.label;
         const retCls='ss-ret'+(r.adjEV>=0.3?'':' warn');
-        h+='<div class="stack-step"><span class="ss-hz">'+r.hz.label+'</span>'
-          +'<span class="ss-detail">'+(r.confidence*100).toFixed(0)+'% conf &middot; '+(r.validity==='full'?'&#10003; full':'~ lean')+'</span>'
-          +'<span class="'+retCls+'">+'+ r.adjEV.toFixed(2)+'%'+(isCurrent?' &larr; now':'')+'</span></div>';
+        h+='<div class="stack-step">'
+          +'<span class="ss-hz">'+r.hz.label+'</span>'
+          +'<span class="ss-detail">'+(r.confidence*100).toFixed(0)+'% conf &middot; '
+          +(r.validity==='full'?'&#10003; full':'~ lean')+'</span>'
+          +'<span class="'+retCls+'">+'
+          +r.adjEV.toFixed(2)+'%'+(isCurrent?' &larr; now':'')+'</span></div>';
       }
-      h+='</div><div class="stack-total"><span class="stack-total-label">Combined expected net</span>'
+      h+='</div>'
+        +'<div class="stack-total"><span class="stack-total-label">Combined expected net</span>'
         +'<span class="stack-total-val">~+'+stackTotal.toFixed(2)+'%</span></div></div>';
     }
+
     h+='<div class="sell-timer">'
-      +'<div class="sell-block"><div class="sell-timer-label">&#9201; Time to sell (countdown)</div>'
+      +'<div class="sell-block">'
+      +'<div class="sell-timer-label">&#9201; Countdown to sell</div>'
       +'<div class="sell-timer-val" id="sell-countdown">calculating...</div></div>'
-      +'<div class="sell-block"><div class="sell-timer-label">&#128336; Sell at (local time)</div>'
+      +'<div class="sell-block">'
+      +'<div class="sell-timer-label">&#128336; Sell at (local time)</div>'
       +'<div class="sell-timer-clock" id="sell-clock">&mdash;</div></div>'
-      +'<div class="sell-timer-detail">If limit sell not hit by sell time &mdash; market sell at candle close</div>'
+      +'<div class="sell-timer-detail">If limit sell not hit -- market sell at candle close</div>'
       +'</div>';
     setTimeout(()=>startSellTimer(td.horizon.minutes,td.candleMinutes),100);
   }
   h+='</div>';
 
-  // SECTION 2: HORIZON PATTERN MATCH
+  // ── SECTION 2: HORIZON PATTERN MATCH ──
   h+='<div class="sec-head"><div class="sec-title">Section 2 -- Pattern Match by Horizon</div>'
-    +'<div class="sec-sub">KNN confidence vs base rate across all 6 horizons &middot; green = full signal &middot; amber = positive edge below threshold &middot; grey = no edge</div></div>'
+    +'<div class="sec-sub">KNN confidence vs base rate &middot; green=full signal &middot; '
+    +'amber=positive edge below threshold &middot; grey=no edge &middot; hysteresis applied</div></div>'
     +'<div class="hgrid">';
   for(const r of hResults){
-    const conf=r.confidence;const pp=conf!=null?(conf*100).toFixed(0):null;
+    const conf=r.confidence;
+    const pp=conf!=null?(conf*100).toFixed(0):null;
     const m=r.bsrc&&r.bsrc.metrics?r.bsrc.metrics:null;
-    const br=r.baseRate;const brPct=br!=null?Math.round(br*100):null;
+    const brPct=r.baseRate!=null?Math.round(r.baseRate*100):null;
     const edge=r.edge;
     const tier=r.validity==='full'?'hi':r.validity==='lean'?'mid':'none';
     const bc=tier==='hi'?'var(--green)':tier==='mid'?'var(--gold)':'var(--dim)';
-    const bw=pp!=null?parseInt(pp):0;const brW=brPct||0;
-    const bt=btResults[r.hz.label];const noBuy=m&&(m.TP+m.FP)===0;
+    const bw=pp!=null?parseInt(pp):0;
+    const brW=brPct||0;
+    const bt=btResults[r.hz.label];
+    const noBuy=m&&(m.TP+m.FP)===0;
     let why='';
-    if(conf==null)why='Insufficient data for this horizon.';
-    else if((edge||-99)<0)why='Pattern is '+Math.abs(edge||0).toFixed(0)+'pp below the base rate -- historically unfavourable.';
-    else if(r.validity==='none')why='Edge of +'+(edge||0).toFixed(0)+'pp present but below the '+MIN_EDGE+'pp minimum. Not actionable.';
-    else if(r.validity==='lean')why='+'+(edge||0).toFixed(0)+'pp edge above base rate -- real signal but KNN confidence ('+pp+'%) is below the '+(liveMinConf*100).toFixed(0)+'% threshold. Can stack with appropriate sizing.';
-    else if(bt&&bt.winRate!=null)why='Strong signal -- '+pp+'% hit rate vs '+(brPct||'?')+'% base rate. Backtested at '+(bt.winRate*100).toFixed(0)+'% win rate over '+(bt.wins+bt.losses)+' out-of-sample trades.';
-    else why=pp+'% hit rate vs '+(brPct||'?')+'% base rate -- +'+(edge||0).toFixed(0)+'pp edge. Solid historical precedent.';
+    if(conf==null) why='Insufficient data.';
+    else if((edge||-99)<0) why='Pattern is '+(Math.abs(edge||0)).toFixed(0)+'pp below base rate -- historically unfavourable.';
+    else if(r.validity==='none') why='+'+(edge||0).toFixed(0)+'pp edge present but below '+MIN_EDGE+'pp minimum. Not actionable.';
+    else if(r.validity==='lean') why='+'+(edge||0).toFixed(0)+'pp edge, KNN conf '
+      +pp+'% -- real signal but below the '+(rawMinConf*100).toFixed(0)+'% threshold (entry requires '
+      +(r.entryThresh!=null?(r.entryThresh*100).toFixed(0):'?')+'%+). Can stack.';
+    else if(bt&&bt.winRate!=null) why='Strong signal. Backtested '+(bt.winRate*100).toFixed(0)+'% win rate over '+(bt.wins+bt.losses)+' out-of-sample trades.';
+    else why=pp+'% hit rate vs '+(brPct||'?')+'% base rate -- +'+(edge||0).toFixed(0)+'pp edge.';
+
     h+='<div class="hcard '+tier+'">'
       +'<div class="hcard-top"><div class="hlabel">'+r.hz.label+'</div>'
       +'<div class="cbadge '+tier+'">'+(pp!=null?pp+'%':'N/A')+'</div></div>'
@@ -844,109 +1136,143 @@ function renderAll(opts){
       +'<div class="dual-bar-label" style="margin-top:2px">'
       +'<span class="sv" style="color:'+bc+'">'+(pp!=null?pp+'%':'--')+'</span>'
       +'<span class="sv mna">'+(brPct!=null?brPct+'% base':'--')+'</span></div></div>'
-      +'<div class="srow2"><span class="sk">Edge above random</span>'
+      +'<div class="srow2"><span class="sk">Edge</span>'
       +'<span class="sv" style="color:'+(edge!=null&&edge>=MIN_EDGE?'var(--green)':edge!=null&&edge<0?'var(--red)':'var(--gold)')+'">'+
         (edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'--')+'</span></div>'
-      +'<div class="srow2"><span class="sk">Target gross</span><span class="sv neu">+'+r.hz.target.toFixed(2)+'%</span></div>'
       +'<div class="srow2"><span class="sk">Exp net EV</span>'
       +'<span class="sv" style="color:'+(r.expNet!=null&&r.expNet>0?'var(--green)':'var(--muted)')+'">'+
         (r.expNet!=null?(r.expNet>=0?'+':'')+r.expNet.toFixed(2)+'%':'--')+'</span></div>'
       +'<div class="srow2"><span class="sk">Pool / K</span><span class="sv mna">'+r.totalPool+' / '+r.n+'</span></div>'
-      +(m?'<div class="srow2"><span class="sk">Model accuracy</span><span class="sv '+mcls(m.accuracy)+'">'+mfmt(m.accuracy)+'</span></div>':'')
-      +(m&&!noBuy?'<div class="srow2"><span class="sk">Precision / F1</span><span class="sv '+mcls(m.precision)+'">'+mfmt(m.precision)+' / '+mfmt(m.f1)+'</span></div>':'')
-      +(m?'<div class="srow2"><span class="sk">MCC</span><span class="sv '+mcls(m.mcc,0.3,0.1)+'">'+
-        (m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'--')+'</span></div>':'')
-      +(bt&&bt.winRate!=null?'<div class="srow2"><span class="sk">BT win rate</span>'
-        +'<span class="sv '+(bt.winRate>=0.55?'pos':bt.winRate>=0.45?'neu':'neg')+'">'+(bt.winRate*100).toFixed(0)+'% ('+(bt.wins+bt.losses)+' trades)</span></div>':'')
-      +(bt&&bt.totalPnl!=null?'<div class="srow2"><span class="sk">BT P&L</span>'
-        +'<span class="sv '+(bt.totalPnl>=0?'pos':'neg')+'">'+(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'%</span></div>':'')
+      +(m?'<div class="srow2"><span class="sk">Accuracy / MCC</span>'
+        +'<span class="sv '+mcls(m.accuracy)+'">'+mfmt(m.accuracy)+' / '
+        +(m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'--')+'</span></div>':'')
+      +(m&&!noBuy?'<div class="srow2"><span class="sk">Precision / F1</span>'
+        +'<span class="sv '+mcls(m.precision)+'">'+mfmt(m.precision)+' / '+mfmt(m.f1)+'</span></div>':'')
+      +(bt&&bt.winRate!=null?'<div class="srow2"><span class="sk">BT win / P&amp;L</span>'
+        +'<span class="sv '+(bt.winRate>=0.55?'pos':bt.winRate>=0.45?'neu':'neg')+'">'
+        +(bt.winRate*100).toFixed(0)+'% / '+(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'%</span></div>':'')
       +(!r.srcAgree?'<div class="srow2"><span class="sk" style="color:var(--gold)">&#9888; Sources disagree</span><span></span></div>':'')
       +'<div class="hz-why">'+why+'</div>'
       +'</div>';
   }
   h+='</div>';
 
-  // SECTION 3: CURRENT MARKET STATE
+  // ── SECTION 3: CURRENT MARKET STATE ──
   h+='<div class="sec-head"><div class="sec-title">Section 3 -- Current Market State</div>'
-    +'<div class="sec-sub">Physics + context features that feed the KNN model &middot; measurement only, not prediction</div></div>';
+    +'<div class="sec-sub">Smoothed physics + context features (averaged over '+SMOOTH_N+' completed candles) &middot; measurement only</div></div>';
   if(lp){
     const c=lp.candle;
     h+='<div class="phys-strip">'
-      +'<div class="pc"><div class="pc-lbl">Price ('+lp.src+')</div><div class="pc-val neu">'+pf(lp.price)+'</div><div class="pc-sub">'+symbol+'</div></div>'
-      +'<div class="pc"><div class="pc-lbl">&#9889; Velocity</div><div class="pc-val '+fc(lp.vel)+'">'+fp(lp.vel)+'</div><div class="pc-sub">% per candle</div></div>'
-      +'<div class="pc"><div class="pc-lbl">&#128640; Acceleration</div><div class="pc-val '+fc(lp.acc)+'">'+fp(lp.acc)+'</div><div class="pc-sub">velocity changing?</div></div>'
-      +'<div class="pc"><div class="pc-lbl">&#9881; Jerk</div><div class="pc-val '+fc(lp.jrk)+'">'+fp(lp.jrk)+'</div><div class="pc-sub">accel changing?</div></div>'
+      +'<div class="pc"><div class="pc-lbl">Price ('+lp.src+')</div>'
+      +'<div class="pc-val neu">'+pf(lp.price)+'</div><div class="pc-sub">'+symbol+'</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#9889; Velocity</div>'
+      +'<div class="pc-val '+fc(lp.vel)+'">'+fp(lp.vel)+'</div><div class="pc-sub">% per candle (smoothed)</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#128640; Acceleration</div>'
+      +'<div class="pc-val '+fc(lp.acc)+'">'+fp(lp.acc)+'</div><div class="pc-sub">velocity changing?</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#9881; Jerk</div>'
+      +'<div class="pc-val '+fc(lp.jrk)+'">'+fp(lp.jrk)+'</div><div class="pc-sub">accel changing?</div></div>'
       +'</div>'
       +'<div class="ctx-grid">'
       +'<div class="ctx-cell"><div class="ctx-lbl">Range position (30-candle)</div>'
-      +'<div class="ctx-val '+(c.rangePos>0.65?'pos':c.rangePos<0.35?'neg':'neu')+'">'+(c.rangePos*100).toFixed(0)+'% &middot; '+(c.rangePos>0.7?'Near high':c.rangePos<0.3?'Near low':'Mid-range')+'</div>'
-      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.rangePos*100).toFixed(0)+'%;background:'+(c.rangePos>0.65?'var(--green)':c.rangePos<0.35?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-val '+(c.rangePos>0.65?'pos':c.rangePos<0.35?'neg':'neu')+'">'
+      +(c.rangePos*100).toFixed(0)+'% &middot; '+(c.rangePos>0.7?'Near high':c.rangePos<0.3?'Near low':'Mid-range')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.rangePos*100).toFixed(0)+'%;background:'
+      +(c.rangePos>0.65?'var(--green)':c.rangePos<0.35?'var(--red)':'var(--gold)')+'"></div></div>'
       +'<div class="ctx-sub">'+c.distFromHi.toFixed(2)+'% below 30-candle high</div></div>'
       +'<div class="ctx-cell"><div class="ctx-lbl">Trend regime (14-candle slope)</div>'
-      +'<div class="ctx-val '+(c.regSlope>0.02?'pos':c.regSlope<-0.02?'neg':'neu')+'">'+(c.regSlope>0.02?'&#8593; Uptrend':c.regSlope<-0.02?'&#8595; Downtrend':'&rarr; Ranging')+'</div>'
-      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+Math.min(100,Math.max(0,50+c.regSlope*500)).toFixed(0)+'%;background:'+(c.regSlope>0?'var(--green)':'var(--red)')+'"></div></div>'
+      +'<div class="ctx-val '+(c.regSlope>0.02?'pos':c.regSlope<-0.02?'neg':'neu')+'">'
+      +(c.regSlope>0.02?'&#8593; Uptrend':c.regSlope<-0.02?'&#8595; Downtrend':'&rarr; Ranging')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'
+      +Math.min(100,Math.max(0,50+c.regSlope*500)).toFixed(0)+'%;background:'
+      +(c.regSlope>0?'var(--green)':'var(--red)')+'"></div></div>'
       +'<div class="ctx-sub">Slope '+fp(c.regSlope,4)+'/candle</div></div>'
       +'<div class="ctx-cell"><div class="ctx-lbl">Candle character</div>'
-      +'<div class="ctx-val '+(c.bodyRatio>0.6?'pos':c.bodyRatio<0.3?'neg':'neu')+'">'+(c.bodyRatio>0.6?'Strong body':c.bodyRatio<0.3?'Indecision wicks':'Moderate')+'</div>'
-      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.bodyRatio*100).toFixed(0)+'%;background:'+(c.bodyRatio>0.6?'var(--green)':c.bodyRatio<0.3?'var(--red)':'var(--gold)')+'"></div></div>'
-      +'<div class="ctx-sub">Wick balance '+(c.wickBalance>=0?'bullish':'bearish')+' ('+fp(c.wickBalance*100,1)+')</div></div>'
+      +'<div class="ctx-val '+(c.bodyRatio>0.6?'pos':c.bodyRatio<0.3?'neg':'neu')+'">'
+      +(c.bodyRatio>0.6?'Strong body':c.bodyRatio<0.3?'Indecision wicks':'Moderate')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.bodyRatio*100).toFixed(0)+'%;background:'
+      +(c.bodyRatio>0.6?'var(--green)':c.bodyRatio<0.3?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-sub">Wick balance '+(c.wickBalance>=0?'bullish':'bearish')
+      +' ('+fp(c.wickBalance*100,1)+')</div></div>'
       +'<div class="ctx-cell"><div class="ctx-lbl">Volume momentum</div>'
-      +'<div class="ctx-val '+(c.volMom>1.1?'pos':c.volMom<0.8?'neg':'neu')+'">'+(c.volMom>1.1?'Rising':c.volMom<0.8?'Falling':'Normal')+' &middot; '+c.volMom.toFixed(2)+'x</div>'
-      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+Math.min(100,c.volMom*50).toFixed(0)+'%;background:'+(c.volMom>1.1?'var(--green)':c.volMom<0.8?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-val '+(c.volMom>1.1?'pos':c.volMom<0.8?'neg':'neu')+'">'
+      +(c.volMom>1.1?'Rising':c.volMom<0.8?'Falling':'Normal')+' &middot; '+c.volMom.toFixed(2)+'x</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+Math.min(100,c.volMom*50).toFixed(0)+'%;background:'
+      +(c.volMom>1.1?'var(--green)':c.volMom<0.8?'var(--red)':'var(--gold)')+'"></div></div>'
       +'<div class="ctx-sub">Recent 5 vs prior 10 candles</div></div>'
       +'</div>';
   }
 
-  // SECTION 4: BACKTEST
+  // ── SECTION 4: BACKTEST ──
   h+='<div class="sec-head"><div class="sec-title">Section 4 -- Historical Backtest</div>'
-    +'<div class="sec-sub">Out-of-sample: trained on first 70%, signals fired at base rate + '+MIN_EDGE+'pp (lower than live threshold to ensure data), fees deducted</div></div>';
+    +'<div class="sec-sub">Out-of-sample: trained on first 70% &middot; signals fire at base rate + '
+    +MIN_EDGE+'pp (lower than live threshold) &middot; fees deducted</div></div>';
   const btHorizons=Object.keys(btResults);
   if(!btHorizons.length){
-    h+='<div class="bt-card"><div class="bt-empty">No backtest data -- pools were too small to split. Try a pair with more trading history or lower the min confidence setting.</div></div>';
+    h+='<div class="bt-card"><div class="bt-empty">No backtest data -- pools too small. '
+      +'Try a pair with more history, or lower the min confidence setting.</div></div>';
   }else{
     for(const hzLabel of btHorizons){
-      const bt=btResults[hzLabel];const tot=bt.wins+bt.losses;const noTrades=tot===0;
+      const bt=btResults[hzLabel];
+      const tot=bt.wins+bt.losses;
+      const noTrades=tot===0;
       h+='<div class="bt-card"><div class="bt-hdr">'
-        +'<div class="bt-title">'+hzLabel+' &middot; out-of-sample'+(bt.btThresh?' &middot; fired at &ge;'+(bt.btThresh*100).toFixed(0)+'% conf':'')+'</div>'
+        +'<div class="bt-title">'+hzLabel+' &middot; out-of-sample'
+        +(bt.btThresh?' &middot; fired at &ge;'+(bt.btThresh*100).toFixed(0)+'% conf':'')+'</div>'
         +'<div class="bt-summary" style="color:'+(bt.totalPnl>=0?'var(--green)':'var(--red)')+'">'+
-          (noTrades?'No signals fired':(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% &middot; '+tot+' trades')+'</div></div>';
+          (noTrades?'No signals fired':(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% &middot; '+tot+' trades')
+        +'</div></div>';
       if(noTrades){
-        h+='<div class="bt-empty">'+(bt.note||'No signals fired at this threshold in the test window.')+'</div>';
+        h+='<div class="bt-empty">'+(bt.note||'No signals fired at this threshold.')+'</div>';
       }else{
         h+='<div class="bt-grid">'
-          +'<div class="bt-stat"><div class="bt-stat-label">Total trades</div><div class="bt-stat-val bt-neu">'+tot+'</div></div>'
-          +'<div class="bt-stat"><div class="bt-stat-label">Win rate</div><div class="bt-stat-val '+(bt.winRate>=0.55?'bt-win':bt.winRate>=0.45?'bt-neu':'bt-loss')+'">'+(bt.winRate*100).toFixed(0)+'%</div></div>'
-          +'<div class="bt-stat"><div class="bt-stat-label">Avg win</div><div class="bt-stat-val bt-win">+'+bt.avgWin.toFixed(2)+'%</div></div>'
-          +'<div class="bt-stat"><div class="bt-stat-label">Avg loss</div><div class="bt-stat-val bt-loss">'+bt.avgLoss.toFixed(2)+'%</div></div>'
-          +'</div>';
+          +'<div class="bt-stat"><div class="bt-stat-label">Trades</div>'
+          +'<div class="bt-stat-val bt-neu">'+tot+'</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Win rate</div>'
+          +'<div class="bt-stat-val '+(bt.winRate>=0.55?'bt-win':bt.winRate>=0.45?'bt-neu':'bt-loss')+'">'
+          +(bt.winRate*100).toFixed(0)+'%</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Avg win</div>'
+          +'<div class="bt-stat-val bt-win">+'+bt.avgWin.toFixed(2)+'%</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Avg loss</div>'
+          +'<div class="bt-stat-val bt-loss">'+bt.avgLoss.toFixed(2)+'%</div></div></div>';
         if(bt.trades.length){
-          h+='<div class="bt-tbl-wrap"><table class="bt"><tr><th>Date</th><th>Entry</th><th>Conf%</th><th>Outcome</th><th>P&L</th><th>Running</th></tr>';
+          h+='<div class="bt-tbl-wrap"><table class="bt">'
+            +'<tr><th>Date</th><th>Entry</th><th>Conf%</th><th>Outcome</th><th>P&amp;L</th><th>Running</th></tr>';
           for(const t of bt.trades.slice(-15)){
             const d=new Date(t.t);
-            const ds=d.toLocaleDateString([],{month:'short',day:'numeric'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-            h+='<tr><td class="bt-neu">'+ds+'</td><td class="bt-neu">$'+t.entry.toLocaleString(undefined,{maximumFractionDigits:0})+'</td>'
+            const ds=d.toLocaleDateString([],{month:'short',day:'numeric'})+' '
+              +d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            h+='<tr><td class="bt-neu">'+ds+'</td>'
+              +'<td class="bt-neu">$'+t.entry.toLocaleString(undefined,{maximumFractionDigits:0})+'</td>'
               +'<td class="bt-neu">'+t.conf.toFixed(0)+'%</td>'
               +'<td class="'+(t.hit?'bt-win':'bt-loss')+'">'+(t.hit?'&#10003; Hit':'&#10007; Miss')+'</td>'
               +'<td class="'+(t.pnl>=0?'bt-win':'bt-loss')+'">'+(t.pnl>=0?'+':'')+t.pnl.toFixed(2)+'%</td>'
               +'<td class="'+(t.equity>=0?'bt-win':'bt-loss')+'">'+(t.equity>=0?'+':'')+t.equity.toFixed(2)+'%</td></tr>';
           }
-          h+='</table></div><div class="bt-foot">Last 15 of '+tot+' trades &middot; '+rtFee.toFixed(2)+'% round-trip fee deducted</div>';
+          h+='</table></div><div class="bt-foot">Last 15 of '+tot+' trades &middot; '
+            +rtFee.toFixed(2)+'% round-trip fee deducted</div>';
         }
       }
       h+='</div>';
     }
   }
 
-  // SECTION 5: MODEL ACCURACY
+  // ── SECTION 5: MODEL ACCURACY ──
   h+='<div class="sec-head"><div class="sec-title">Section 5 -- Model Accuracy</div>'
-    +'<div class="sec-sub">Leave-one-out cross-validation on up to '+MAX_EVAL+' samples per horizon &middot; '+DIMS.length+' features &middot; BUY predicted when KNN conf &ge; base rate + '+MIN_EDGE+'pp</div></div>'
+    +'<div class="sec-sub">Leave-one-out cross-validation on up to '+MAX_EVAL+' samples &middot; '
+    +DIMS.length+' features &middot; BUY predicted at conf &ge; base rate + '+MIN_EDGE+'pp</div></div>'
     +'<div class="ml-panel"><div class="ml-hdr"><div class="ml-title">Classifier performance</div>'
     +'<div class="ml-sub">'+DIMS.join(' &middot; ')+'</div></div>'
-    +'<table class="ml"><tr><th>Hz</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>Specificity</th><th>MCC</th><th>Base rate</th><th>N</th></tr>';
-  function bar(v){return v!=null?'<span class="bari" style="width:'+Math.round((v||0)*36)+'px;background:'+(v>=.6?'var(--green)':v>=.5?'var(--gold)':'var(--red)')+'"></span>':'';}
+    +'<table class="ml"><tr><th>Hz</th><th>Accuracy</th><th>Precision</th><th>Recall</th>'
+    +'<th>F1</th><th>Spec.</th><th>MCC</th><th>Base%</th><th>N</th></tr>';
+  function bar(v){
+    if(v==null)return'';
+    return'<span class="bari" style="width:'+Math.round((v||0)*36)+'px;background:'
+      +(v>=.6?'var(--green)':v>=.5?'var(--gold)':'var(--red)')+'"></span>';
+  }
   for(const r of hResults){
     const m=r.bsrc&&r.bsrc.metrics?r.bsrc.metrics:null;
-    if(!m){h+='<tr><td style="color:var(--blue2)">'+r.hz.label+'</td><td colspan="8" class="mna">No data -- pool too small or fetch failed</td></tr>';continue;}
+    if(!m){h+='<tr><td style="color:var(--blue2)">'+r.hz.label+'</td>'
+      +'<td colspan="8" class="mna">No data -- pool too small or fetch failed</td></tr>';continue;}
     const noBuy=(m.TP+m.FP)===0;
     h+='<tr><td style="color:var(--blue2);font-weight:700">'+r.hz.label+'</td>'
       +'<td class="'+mcls(m.accuracy)+'">'+mfmt(m.accuracy)+bar(m.accuracy)+'</td>'
@@ -958,14 +1284,24 @@ function renderAll(opts){
       +'<td class="mna">'+mfmt(m.baseRate)+'</td>'
       +'<td class="mna">'+m.evalN+'</td></tr>';
   }
-  h+='</table><div class="ml-foot"><b>Accuracy</b> overall correct &middot; <b>Precision</b> when model said BUY, how often right &middot; <b>Recall</b> real moves caught &middot; <b>F1</b> precision/recall balance &middot; <b>MCC</b> overall quality -1 to +1, >0.2 is meaningful &middot; <b>Base rate</b> natural hit frequency &middot; <b>&dagger; n/a</b> model never predicted BUY (confidence universally low for this horizon)</div></div>';
+  h+='</table><div class="ml-foot"><b>Accuracy</b> overall correct &middot; '
+    +'<b>Precision</b> of BUY calls, how many right &middot; '
+    +'<b>Recall</b> real moves caught &middot; <b>F1</b> precision/recall balance &middot; '
+    +'<b>MCC</b> quality -1 to +1, &gt;0.2 meaningful &middot; '
+    +'<b>Base%</b> natural hit rate &middot; '
+    +'<b>&dagger; n/a</b> model never predicted BUY on this horizon</div></div>';
 
-  // SECTION 6: DATA VALIDATION
+  // ── SECTION 6: DATA VALIDATION ──
   h+='<div class="sec-head"><div class="sec-title">Section 6 -- Data Validation</div>'
-    +'<div class="sec-sub">Sanity-check the raw candle data feeding the model</div></div><div class="ds-table">';
+    +'<div class="sec-sub">Sanity-check the raw candle data feeding the model</div></div>'
+    +'<div class="ds-table">';
   for(const src of SOURCES){
     const s=seriesMap[src.id];
-    if(!s||s.length<2){h+='<div class="ds-row"><span class="ds-k">'+src.id+'</span><span class="ds-err">&#10007; No data -- fetch failed or timed out</span></div>';continue;}
+    if(!s||s.length<2){
+      h+='<div class="ds-row"><span class="ds-k">'+src.id+'</span>'
+        +'<span class="ds-err">&#10007; No data -- fetch failed or timed out</span></div>';
+      continue;
+    }
     const closes=s.map(x=>x.c),vols=s.map(x=>x.v);
     const hi=Math.max(...closes),lo=Math.min(...closes);
     const netChg=((closes[closes.length-1]-closes[0])/closes[0]*100);
@@ -973,71 +1309,99 @@ function renderAll(opts){
     const avgVol=vols.reduce((a,b)=>a+b,0)/vols.length;
     const recentVol=vols.slice(-5).reduce((a,b)=>a+b,0)/5;
     const range=((hi-lo)/lo*100).toFixed(1);
-    const fd=new Date(s[0].t).toLocaleDateString(),ld=new Date(s[s.length-1].t).toLocaleDateString();
-    h+='<div class="ds-row"><span class="ds-k">'+src.id+'</span>'
+    const fd=new Date(s[0].t).toLocaleDateString();
+    const ld=new Date(s[s.length-1].t).toLocaleDateString();
+    h+='<div class="ds-row">'
+      +'<span class="ds-k">'+src.id+'</span>'
       +'<span style="color:var(--muted);font-size:.68rem">'+s.length+' candles &middot; '+fd+'&ndash;'+ld+'</span>'
       +'<span style="margin-left:auto;font-size:.7rem;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">'
-      +'<span>Range <b style="color:var(--gold)">'+range+'%</b> ($'+lo.toLocaleString(undefined,{maximumFractionDigits:0})+'&ndash;$'+hi.toLocaleString(undefined,{maximumFractionDigits:0})+')</span>'
+      +'<span>Range <b style="color:var(--gold)">'+range+'%</b> ($'+lo.toLocaleString(undefined,{maximumFractionDigits:0})
+      +'&ndash;$'+hi.toLocaleString(undefined,{maximumFractionDigits:0})+')</span>'
       +'<span>Net <b class="'+(netChg>=0?'ds-ok':'ds-err')+'">'+(netChg>=0?'+':'')+netChg.toFixed(1)+'%</b></span>'
       +'<span>&#8593;candles <b style="color:var(--blue2)">'+upPct+'%</b></span>'
-      +'<span>Vol <b style="color:'+(recentVol>avgVol?'var(--green)':'var(--muted)')+'">'+avgVol.toFixed(0)+'/'+recentVol.toFixed(0)+'</b></span>'
+      +'<span>Vol avg/recent <b style="color:'+(recentVol>avgVol?'var(--green)':'var(--muted)')
+      +'">'+avgVol.toFixed(0)+'/'+recentVol.toFixed(0)+'</b></span>'
       +'</span></div>';
   }
   h+='</div>';
 
-  // SECTION 7: RAW CANDLE DATA
+  // ── SECTION 7: RAW CANDLE DATA ──
   h+='<div class="sec-head"><div class="sec-title">Section 7 -- Raw Candle Data</div>'
-    +'<div class="sec-sub">Last '+RECENT_N+' candles per timeframe with V/A/J and context features &middot; most recent source open by default</div></div>';
+    +'<div class="sec-sub">Last '+RECENT_N+' candles with V/A/J and context features &middot; '
+    +'most recent source open by default &middot; tap header to expand others</div></div>';
   const defaultOpen=(()=>{for(const src of SOURCES)if(seriesMap[src.id]&&seriesMap[src.id].length)return src.id;return null;})();
   for(const src of SOURCES){
     const s=seriesMap[src.id];
-    if(!s||!s.length){h+='<div class="ctable-wrap"><div class="ctable-hdr"><div class="ctable-title">'+src.id+' -- '+src.label.trim()+'</div><div class="ctable-meta" style="color:var(--red)">&#10007; No data</div></div></div>';continue;}
-    const recent=s.slice(-RECENT_N),last2=recent[recent.length-1],prev2=recent[recent.length-2];
+    if(!s||!s.length){
+      h+='<div class="ctable-wrap"><div class="ctable-hdr">'
+        +'<div class="ctable-title">'+src.id+' -- '+src.label.trim()+'</div>'
+        +'<div class="ctable-meta" style="color:var(--red)">&#10007; No data</div></div></div>';
+      continue;
+    }
+    const recent=s.slice(-RECENT_N);
+    const last2=recent[recent.length-1],prev2=recent[recent.length-2];
     const chg=prev2?((last2.c-prev2.c)/prev2.c*100):0;
     const isDefault=src.id===defaultOpen;
-    h+='<div class="ctable-wrap"><div class="ctable-hdr" onclick="toggleTable(\'ct-'+src.id+'\')">'
+    h+='<div class="ctable-wrap">'
+      +'<div class="ctable-hdr" onclick="toggleTable(\'ct-'+src.id+'\')">'
       +'<div class="ctable-title">'+src.id+' -- '+src.label.trim()+'</div>'
-      +'<div class="ctable-meta">'+pf(last2.c)+'&nbsp;<span class="'+(chg>=0?'up':'dn')+'">'+(chg>=0?'+':'')+chg.toFixed(3)+'%</span>&nbsp;&middot; tap '+(isDefault?'&#9652;':'&#9662;')+'</div>'
-      +'</div><div class="ctable-body'+(isDefault?' open':'__')+'" id="ct-'+src.id+'">'
-      +'<table class="ct"><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol</th><th>&#916;%</th><th>Vel</th><th>Acc</th><th>Jrk</th><th>Rng%</th><th>Body</th></tr>';
+      +'<div class="ctable-meta">'+pf(last2.c)+'&nbsp;'
+      +'<span class="'+(chg>=0?'up':'dn')+'">'+(chg>=0?'+':'')+chg.toFixed(3)+'%</span>'
+      +'&nbsp;&middot; tap '+(isDefault?'&#9652;':'&#9662;')+'</div></div>'
+      +'<div class="ctable-body'+(isDefault?' open':'')+'|" id="ct-'+src.id+'">'
+      +'<table class="ct"><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th>'
+      +'<th>Vol</th><th>&#916;%</th><th>Vel</th><th>Acc</th><th>Jrk</th><th>Rng%</th><th>Body</th></tr>';
     for(let i=0;i<recent.length;i++){
-      const row=recent[i],pr=i>0?recent[i-1]:null,dp=pr?((row.c-pr.c)/pr.c*100):0,isLive=i===recent.length-1;
+      const row=recent[i],pr=i>0?recent[i-1]:null;
+      const dp=pr?((row.c-pr.c)/pr.c*100):0;
+      const isLive=i===recent.length-1;
       const dt=new Date(row.t);
-      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      h+='<tr'+(isLive?' class="live-row"':'')+'>'+
-        '<td>'+ts+(isLive?' &#128308;':'')+'</td>'+
-        '<td class="ct-neu">'+row.o.toFixed(2)+'</td><td class="up">'+row.h.toFixed(2)+'</td><td class="dn">'+row.l.toFixed(2)+'</td>'+
-        '<td class="'+(dp>=0?'up':'dn')+'">'+row.c.toFixed(2)+'</td>'+
-        '<td class="ct-neu">'+row.v.toFixed(0)+'</td>'+
-        '<td class="'+(dp>=0?'up':'dn')+'">'+(dp>=0?'+':'')+dp.toFixed(3)+'%</td>'+
-        '<td class="'+fc(row.vel)+'">'+row.vel.toFixed(4)+'%</td>'+
-        '<td class="'+fc(row.acc)+'">'+row.acc.toFixed(4)+'%</td>'+
-        '<td class="'+fc(row.jrk)+'">'+row.jrk.toFixed(4)+'%</td>'+
-        '<td class="'+(row.rangePos>0.65?'up':row.rangePos<0.35?'dn':'ct-neu')+'">'+(row.rangePos*100).toFixed(0)+'%</td>'+
-        '<td class="'+(row.bodyRatio>0.6?'up':row.bodyRatio<0.3?'dn':'ct-neu')+'">'+(row.bodyRatio*100).toFixed(0)+'%</td>'+
-        '</tr>';
+      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '
+        +dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      h+='<tr'+(isLive?' class="live-row"':'')+'>'
+        +'<td>'+ts+(isLive?' &#128308;':'')+'</td>'
+        +'<td class="ct-neu">'+row.o.toFixed(2)+'</td>'
+        +'<td class="up">'+row.h.toFixed(2)+'</td>'
+        +'<td class="dn">'+row.l.toFixed(2)+'</td>'
+        +'<td class="'+(dp>=0?'up':'dn')+'">'+row.c.toFixed(2)+'</td>'
+        +'<td class="ct-neu">'+row.v.toFixed(0)+'</td>'
+        +'<td class="'+(dp>=0?'up':'dn')+'">'+(dp>=0?'+':'')+dp.toFixed(3)+'%</td>'
+        +'<td class="'+fc(row.vel)+'">'+row.vel.toFixed(4)+'%</td>'
+        +'<td class="'+fc(row.acc)+'">'+row.acc.toFixed(4)+'%</td>'
+        +'<td class="'+fc(row.jrk)+'">'+row.jrk.toFixed(4)+'%</td>'
+        +'<td class="'+(row.rangePos>0.65?'up':row.rangePos<0.35?'dn':'ct-neu')+'">'+(row.rangePos*100).toFixed(0)+'%</td>'
+        +'<td class="'+(row.bodyRatio>0.6?'up':row.bodyRatio<0.3?'dn':'ct-neu')+'">'+(row.bodyRatio*100).toFixed(0)+'%</td>'
+        +'</tr>';
     }
     h+='</table></div></div>';
   }
 
-  // NOTIFICATIONS
+  // Notifications
   const notifOk=typeof Notification!=='undefined';
-  if(!notifOk){h+='<div class="notif-row"><p>Add to home screen as a PWA to enable push notifications.</p></div>';}
-  else if(Notification.permission==='default'){h+='<div class="notif-row"><p>Enable alerts to be notified when a BUY signal fires.</p><button class="notif-btn" onclick="askNotif()">Enable Alerts</button></div>';}
-  else if(Notification.permission==='granted'){h+='<div class="notif-row"><p style="color:var(--green)">&#10003; Alerts active.</p></div>';}
+  if(!notifOk){
+    h+='<div class="notif-row"><p>Add to home screen as a PWA to enable push notifications.</p></div>';
+  }else if(Notification.permission==='default'){
+    h+='<div class="notif-row"><p>Enable alerts to be notified when a BUY signal fires.</p>'
+      +'<button class="notif-btn" onclick="askNotif()">Enable Alerts</button></div>';
+  }else if(Notification.permission==='granted'){
+    h+='<div class="notif-row"><p style="color:var(--green)">&#10003; Alerts active.</p></div>';
+  }
+
   document.getElementById('scroll').innerHTML=h;
-  // fix open class (used __ as placeholder to avoid heredoc issues)
-  document.getElementById('scroll').innerHTML=document.getElementById('scroll').innerHTML.replace(/ctable-body__/g,'ctable-body');
+  // Fix the pipe placeholder for open class (| suffix avoids heredoc quoting issues)
+  document.getElementById('scroll').innerHTML=
+    document.getElementById('scroll').innerHTML.replace(/ctable-body\|/g,'ctable-body');
 }
 
-// NOTIFICATIONS
+// ── NOTIFICATIONS ────────────────────────────────────────────────────────────
 async function askNotif(){
   if(typeof Notification==='undefined'){showToast('Notifications not supported here');return;}
-  const p=await Notification.requestPermission();showToast(p==='granted'?'&#10003; Alerts enabled':'Notifications blocked');
-  if(p!=='default')runAnalysis();
+  const p=await Notification.requestPermission();
+  showToast(p==='granted'?'&#10003; Alerts enabled':'Notifications blocked');
+  if(p!=='default') runAnalysis();
 }
 
-// BOOT
+// ── BOOT ──────────────────────────────────────────────────────────────────────
 loadSettings();
 </script>
 </body>
