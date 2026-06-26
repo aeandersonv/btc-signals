@@ -795,9 +795,10 @@ function renderAll(opts){
         +'<div class="stack-steps">';
       for(const r of stackPlan){
         const isCurrent=r.hz.label===td.horizon.label;
+        const retCls='ss-ret'+(r.adjEV>=0.3?'':' warn');
         h+='<div class="stack-step"><span class="ss-hz">'+r.hz.label+'</span>'
           +'<span class="ss-detail">'+(r.confidence*100).toFixed(0)+'% conf &middot; '+(r.validity==='full'?'&#10003; full':'~ lean')+'</span>'
-          +'<span class="ss-ret'+(r.adjEV>=0.3?'':' warn')"">+'+ r.adjEV.toFixed(2)+'%'+(isCurrent?' &larr; now':'')+'</span></div>';
+          +'<span class="'+retCls+'">+'+ r.adjEV.toFixed(2)+'%'+(isCurrent?' &larr; now':'')+'</span></div>';
       }
       h+='</div><div class="stack-total"><span class="stack-total-label">Combined expected net</span>'
         +'<span class="stack-total-val">~+'+stackTotal.toFixed(2)+'%</span></div></div>';
