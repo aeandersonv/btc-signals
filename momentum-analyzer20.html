@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WAVE">
+<meta name="theme-color" content="#060a10">
+<title>WAVE 20 — Momentum Analyzer</title>
+<style>
+:root{
+  --bg:#060a10;--bg2:#0b1018;--bg3:#101620;--bg4:#151d2a;
+  --border:#1c2a3a;--text:#d0e0f0;--muted:#445566;--dim:#2a3a4a;
+  --green:#00d97e;--green2:#00ff94;--red:#ff3355;
+  --blue:#2196f3;--blue2:#64b5f6;--gold:#ffb830;--violet:#9b6dff;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'SF Mono',ui-monospace,monospace;font-size:13px;overscroll-behavior:none}
+.app{display:flex;flex-direction:column;height:100%}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:calc(10px + var(--safe-top)) 14px 10px;
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.logo-wrap{display:flex;flex-direction:column}
+.logo{font-size:1.1rem;font-weight:700;letter-spacing:.1em;
+  background:linear-gradient(90deg,var(--green2),var(--blue2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:.55rem;color:var(--muted);letter-spacing:.1em}
+.pair-select{background:var(--bg4);color:var(--blue2);border:1px solid var(--border);
+  padding:5px 10px;border-radius:6px;font-family:inherit;font-size:.8rem;cursor:pointer}
+.status-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.pulse.live{background:var(--green);animation:glow 2s infinite}
+.pulse.err{background:var(--red)}
+.pulse.busy{width:10px;height:10px;border:2px solid var(--gold);border-top-color:transparent;
+  border-radius:50%;background:transparent;animation:spin .7s linear infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 #00d97e55}50%{box-shadow:0 0 0 5px #00d97e00}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.last-ts{font-size:.65rem;color:var(--muted)}
+.run-btn{background:transparent;color:var(--green);border:1px solid var(--green);
+  padding:6px 14px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.8rem;transition:background .15s}
+.run-btn:hover{background:#00d97e12}
+.run-btn:disabled{opacity:.4;cursor:default}
+.settings{background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
+.stoggle{width:100%;background:none;border:none;color:var(--muted);font-family:inherit;
+  font-size:.7rem;padding:7px 14px;text-align:left;cursor:pointer;
+  display:flex;justify-content:space-between;letter-spacing:.05em;text-transform:uppercase}
+.stoggle:hover{color:var(--text)}
+.sbody{padding:10px 14px 12px;border-top:1px solid var(--border);display:none;flex-direction:column;gap:12px}
+.sbody.open{display:flex}
+.srow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.sgrp{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.slabel{font-size:.68rem;color:var(--muted)}.slabel b{color:var(--text)}
+.sinput{background:var(--bg4);color:var(--gold);border:1px solid var(--border);
+  width:72px;padding:5px 8px;border-radius:5px;font-family:inherit;font-size:.8rem;text-align:right}
+.sdesc{font-size:.63rem;color:var(--dim);line-height:1.5;max-width:200px}
+.ssum{padding:5px 14px 7px;font-size:.68rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.ssum b{color:var(--gold)}
+.scroll{flex:1;overflow-y:auto;padding:10px;
+  padding-bottom:calc(16px + var(--safe-bot));display:flex;flex-direction:column;gap:10px}
+.plog{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px}
+.plog-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.ll{font-size:.72rem;padding:3px 0;border-bottom:1px solid var(--bg3);display:flex;align-items:center;gap:8px}
+.ll:last-child{border-bottom:none}
+.li{flex-shrink:0;width:16px}.lt{flex:1}
+.lv{color:var(--blue2);font-size:.68rem}.le{color:var(--red);font-size:.68rem}
+.sec-head{padding:4px 0 2px}
+.sec-title{font-size:.72rem;color:var(--text);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.sec-sub{font-size:.65rem;color:var(--muted);margin-top:2px;line-height:1.5}
+/* recommendation card */
+.rec-card{border-radius:10px;padding:16px;border:1px solid var(--dim)}
+.rec-card.go   {background:#00d97e0d;border-color:var(--green);box-shadow:0 0 20px #00d97e14}
+.rec-card.soft {background:#ffb8300d;border-color:var(--gold);box-shadow:0 0 16px #ffb83010}
+.rec-card.watch{background:#9b6dff0a;border-color:var(--violet)}
+.rec-card.hold {background:#44556610;border-color:var(--dim)}
+.rec-eyebrow{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:6px}
+.rec-action{font-size:1.5rem;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+.rec-action.go{color:var(--green2)}.rec-action.soft{color:var(--gold)}
+.rec-action.watch{color:var(--violet)}.rec-action.hold{color:var(--muted)}
+.rec-disclaimer{font-size:.65rem;color:var(--gold);margin-bottom:8px;padding:4px 8px;
+  background:#ffb83012;border-radius:4px;border:1px solid #ffb83030}
+.rec-body{font-size:.75rem;color:var(--muted);line-height:1.8}
+.rec-body b{color:var(--text)}.hi{color:var(--green2)}.warn{color:var(--gold)}
+/* stability badge */
+.stab-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.stab-badge{font-size:.65rem;padding:2px 8px;border-radius:3px;font-weight:700}
+.stab-badge.stable{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.stab-badge.shifted{background:#ffb83018;color:var(--gold);border:1px solid var(--gold)}
+.stab-badge.new{background:#44556618;color:var(--muted);border:1px solid var(--dim)}
+.stab-conf{font-size:.65rem;color:var(--muted)}
+.stab-conf b{color:var(--text)}
+/* trade box */
+.trade-box{margin-top:12px;padding:12px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)}
+.trade-box-title{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.trade-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.trade-key{font-size:.7rem;color:var(--muted)}
+.trade-val{font-size:.92rem;font-weight:700}
+.trade-val.buy{color:var(--blue2)}.trade-val.sell{color:var(--green2)}.trade-val.net{color:var(--green2)}
+.trade-note{font-size:.62rem;color:var(--dim);margin-bottom:6px;margin-top:-3px}
+.trade-math{font-size:.67rem;color:var(--dim);line-height:1.7;padding-top:6px;border-top:1px solid var(--bg4)}
+.trade-math b{color:var(--muted)}
+/* stack plan */
+.stack-plan{margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:7px;border:1px solid var(--border)}
+.stack-title{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px}
+.stack-steps{display:flex;flex-direction:column;gap:5px}
+.stack-step{display:flex;justify-content:space-between;align-items:center;font-size:.72rem}
+.ss-hz{color:var(--blue2);font-weight:700;min-width:32px}
+.ss-detail{color:var(--muted);flex:1;padding:0 8px}
+.ss-ret{font-weight:700;color:var(--green2)}.ss-ret.warn{color:var(--gold)}
+.stack-total{margin-top:6px;padding-top:6px;border-top:1px solid var(--bg4);
+  display:flex;justify-content:space-between;font-size:.72rem}
+.stack-total-label{color:var(--muted)}.stack-total-val{font-weight:700;color:var(--green2)}
+/* sell timer */
+.sell-timer{margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:6px;
+  border:1px solid var(--border);display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.sell-block{display:flex;flex-direction:column;gap:2px}
+.sell-timer-label{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.sell-timer-val{font-size:.95rem;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.sell-timer-clock{font-size:.95rem;font-weight:700;color:var(--blue2);font-variant-numeric:tabular-nums}
+.sell-timer-detail{font-size:.63rem;color:var(--dim);width:100%;margin-top:2px}
+/* physics strip */
+.phys-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.pc{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 10px}
+.pc-lbl{font-size:.62rem;color:var(--muted);margin-bottom:3px}
+.pc-val{font-size:.88rem;font-weight:700}
+.pc-sub{font-size:.6rem;color:var(--dim);margin-top:2px}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--text)}
+/* context grid */
+.ctx-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px}
+@media(min-width:480px){.ctx-grid{grid-template-columns:repeat(4,1fr)}}
+.ctx-cell{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 10px}
+.ctx-lbl{font-size:.6rem;color:var(--muted);margin-bottom:3px}
+.ctx-val{font-size:.82rem;font-weight:700}
+.ctx-bar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:4px}
+.ctx-fill{height:100%;border-radius:2px}
+.ctx-sub{font-size:.58rem;color:var(--dim);margin-top:3px}
+/* horizon cards */
+.hgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:480px){.hgrid{grid-template-columns:repeat(3,1fr)}}
+.hcard{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px}
+.hcard.hi{border-color:var(--green);box-shadow:0 0 12px #00d97e18}
+.hcard.mid{border-color:var(--gold)}
+.hcard.lo,.hcard.none{border-color:var(--border)}
+.hcard.none{opacity:.5}
+.hcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.hlabel{color:var(--blue2);font-size:.9rem;font-weight:700}
+.cbadge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:3px}
+.cbadge.hi{background:#00d97e18;color:var(--green2);border:1px solid var(--green)}
+.cbadge.mid{background:#ffb83018;color:var(--gold);border:1px solid var(--gold)}
+.cbadge.lo,.cbadge.none{color:var(--muted);border:1px solid var(--dim)}
+.btrack{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:3px}
+.bfill{height:100%;border-radius:2px;transition:width .5s}
+.dual-bar-wrap{margin:6px 0 8px}
+.dual-bar-label{display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);margin-bottom:2px}
+.srow2{display:flex;justify-content:space-between;align-items:baseline;gap:4px;margin-bottom:2px}
+.sk{font-size:.65rem;color:var(--muted)}.sv{font-size:.7rem}
+.hz-why{margin-top:6px;padding-top:6px;border-top:1px solid var(--bg3);
+  font-size:.67rem;color:var(--muted);line-height:1.55}
+/* backtest */
+.bt-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.bt-hdr{padding:10px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.bt-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.bt-summary{font-size:.72rem}
+.bt-grid{display:grid;grid-template-columns:repeat(4,1fr)}
+@media(max-width:400px){.bt-grid{grid-template-columns:repeat(2,1fr)}}
+.bt-stat{padding:10px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.bt-stat:nth-child(4n){border-right:none}
+.bt-stat-label{font-size:.62rem;color:var(--muted);margin-bottom:3px}
+.bt-stat-val{font-size:.95rem;font-weight:700}
+.bt-tbl-wrap{overflow-x:auto;border-top:1px solid var(--border)}
+table.bt{width:100%;border-collapse:collapse;font-size:.68rem;min-width:400px}
+table.bt th{background:var(--bg3);color:var(--muted);padding:5px 9px;text-align:left;
+  font-weight:normal;font-size:.62rem;text-transform:uppercase;white-space:nowrap}
+table.bt td{padding:5px 9px;border-bottom:1px solid var(--bg3);white-space:nowrap}
+table.bt tr:last-child td{border-bottom:none}
+.bt-win{color:var(--green)}.bt-loss{color:var(--red)}.bt-neu{color:var(--muted)}
+.bt-foot{padding:7px 12px;font-size:.63rem;color:var(--dim);border-top:1px solid var(--border);line-height:1.6}
+.bt-empty{padding:14px 12px;font-size:.72rem;color:var(--muted)}
+/* model accuracy */
+.ml-panel{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ml-hdr{padding:9px 12px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.ml-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+.ml-sub{font-size:.63rem;color:var(--dim);word-break:break-all}
+table.ml{width:100%;border-collapse:collapse;font-size:.7rem}
+table.ml th{background:var(--bg3);color:var(--muted);padding:5px 9px;text-align:left;
+  font-weight:normal;font-size:.63rem;text-transform:uppercase;white-space:nowrap}
+table.ml td{padding:5px 9px;border-bottom:1px solid var(--bg3);white-space:nowrap}
+table.ml tr:last-child td{border-bottom:none}
+table.ml tr:hover td{background:var(--bg3)}
+.mhi{color:var(--green)}.mmid{color:var(--gold)}.mlo{color:var(--red)}.mna{color:var(--dim)}
+.bari{display:inline-block;height:3px;border-radius:2px;vertical-align:middle;margin-left:5px}
+.ml-foot{padding:7px 12px;font-size:.63rem;color:var(--dim);line-height:1.7;border-top:1px solid var(--border)}
+/* data validation */
+.ds-table{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ds-row{display:flex;justify-content:space-between;align-items:center;
+  padding:7px 12px;border-bottom:1px solid var(--bg3);font-size:.7rem;flex-wrap:wrap;gap:4px}
+.ds-row:last-child{border-bottom:none}
+.ds-k{color:var(--muted);font-weight:700;min-width:36px}
+.ds-ok{color:var(--green)}.ds-err{color:var(--red)}
+/* candle tables */
+.ctable-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.ctable-hdr{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;
+  cursor:pointer;user-select:none}
+.ctable-hdr:hover{background:var(--bg3)}
+.ctable-title{font-size:.72rem;color:var(--blue2);font-weight:700}
+.ctable-meta{font-size:.65rem;color:var(--muted)}
+.ctable-body{display:none;overflow-x:auto;border-top:1px solid var(--border)}
+.ctable-body.open{display:block}
+table.ct{width:100%;border-collapse:collapse;font-size:.67rem;min-width:540px}
+table.ct th{background:var(--bg3);color:var(--muted);padding:5px 8px;text-align:right;
+  font-weight:normal;font-size:.6rem;text-transform:uppercase;white-space:nowrap}
+table.ct th:first-child{text-align:left}
+table.ct td{padding:5px 8px;border-bottom:1px solid var(--bg3);text-align:right;white-space:nowrap}
+table.ct td:first-child{text-align:left;color:var(--muted)}
+table.ct tr:last-child td{border-bottom:none}
+table.ct tr.live-row td{background:#00d97e07}
+.up{color:var(--green)}.dn{color:var(--red)}.ct-neu{color:var(--text)}
+/* notif / toast */
+.notif-row{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.notif-row p{font-size:.7rem;color:var(--muted);flex:1;min-width:160px;line-height:1.5}
+.notif-btn{background:var(--bg4);color:var(--blue2);border:1px solid var(--blue);
+  padding:5px 12px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:.75rem}
+.toast{position:fixed;bottom:calc(20px + var(--safe-bot));left:50%;transform:translateX(-50%);
+  background:var(--bg2);border:1px solid var(--green);color:var(--green2);
+  padding:7px 18px;border-radius:20px;font-size:.78rem;white-space:nowrap;
+  opacity:0;transition:opacity .3s;pointer-events:none;z-index:99}
+.toast.show{opacity:1}
+.empty-hint{color:var(--muted);font-size:.8rem;text-align:center;padding:40px 20px;line-height:1.9}
+.empty-hint b{color:var(--text)}
+/* interpretation panels */
+.interp{background:var(--bg3);border:1px solid var(--dim);border-radius:7px;overflow:hidden;margin-bottom:2px}
+.interp-toggle{width:100%;background:none;border:none;color:var(--dim);font-family:inherit;
+  font-size:.65rem;padding:6px 10px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;
+  letter-spacing:.04em;transition:color .15s}
+.interp-toggle:hover{color:var(--muted)}
+.interp-body{display:none;padding:8px 10px 10px;font-size:.68rem;color:var(--muted);line-height:1.7;
+  border-top:1px solid var(--dim)}
+.interp-body.open{display:block}
+.interp-body b{color:var(--text)}.interp-body .hi{color:var(--green2)}.interp-body .warn{color:var(--gold)}
+.interp-body ul{margin:4px 0 4px 14px}
+.interp-body li{margin-bottom:3px}
+.interp-body .ik{display:inline-block;min-width:80px;color:var(--text);font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="topbar">
+  <div class="logo-wrap">
+    <div class="logo">WAVE</div>
+    <div class="logo-sub">MOMENTUM ANALYZER v20</div>
+  </div>
+  <select class="pair-select" id="pairSelect" onchange="saveSettings()">
+    <option value="BTCUSDT">BTC / USDT</option>
+    <option value="ETHUSDT">ETH / USDT</option>
+    <option value="SOLUSDT">SOL / USDT</option>
+    <option value="XRPUSDT">XRP / USDT</option>
+    <option value="BNBUSDT">BNB / USDT</option>
+  </select>
+  <div class="status-wrap">
+    <div class="pulse" id="pulse"></div>
+    <div class="last-ts" id="lastTs">--</div>
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">&#8635; Analyze</button>
+  </div>
+</div>
+<div class="settings">
+  <button class="stoggle" onclick="toggleSettings()"><span>&#9881; Settings</span><span id="sarrow">&#9662;</span></button>
+  <div class="sbody" id="sbody">
+    <div class="srow">
+      <div class="sgrp">
+        <div class="slabel"><b>Maker fee %</b></div>
+        <input class="sinput" type="number" id="makerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Limit order fee. Typically 0.08-0.10%.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Taker fee %</b></div>
+        <input class="sinput" type="number" id="takerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Market order fill fee.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Entry buffer %</b></div>
+        <input class="sinput" type="number" id="entryBuffer" value="0.10" step="0.05" min="0" max="1" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Slippage allowance above last price for limit buy.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Min confidence %</b></div>
+        <input class="sinput" type="number" id="minConf" value="55" step="1" min="40" max="95" oninput="saveSettings()">
+        <div class="sdesc">Full-send threshold. Hysteresis band applied automatically (+2pp entry / -3pp exit).</div>
+      </div>
+    </div>
+  </div>
+  <div class="ssum">
+    Round-trip: <b id="rtDisp">0.20%</b> &nbsp;&middot;&nbsp;
+    Entry buffer: <b id="bufDisp">0.10%</b> &nbsp;&middot;&nbsp;
+    Manual refresh only
+  </div>
+</div>
+<div class="scroll" id="scroll">
+  <div class="empty-hint">
+    Select a pair and tap <b>&#8635; Analyze</b>.<br><br>
+    5 timeframes &middot; 9 KNN features &middot; smoothed fingerprint &middot;
+    hysteresis thresholds &middot; out-of-sample backtest &middot; stability indicator.<br><br>
+    <b>New in v20:</b> outcomes are scored as <b>real net returns</b> (a miss costs the actual drop, not just fees), cross-validation is <b>purged</b>, and the backtest is <b>embargoed</b> with non-overlapping trades. Tap any <b>&#8505; How to read this</b> for details.<br>
+    Tap it to learn what the numbers mean and how to act on them.
+  </div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const SOURCES=[
+  {id:'30m',interval:'30m',limit:480,label:'30m (~10 days)',minutes:30},
+  {id:'1h', interval:'1h', limit:500,label:'1h  (~21 days)',minutes:60},
+  {id:'4h', interval:'4h', limit:360,label:'4h  (~60 days)',minutes:240},
+  {id:'6h', interval:'6h', limit:240,label:'6h  (~60 days)',minutes:360},
+  {id:'1d', interval:'1d', limit:90, label:'1d  (~3 months)',minutes:1440},
+];
+const HORIZONS=[
+  {label:'1h',  minutes:60,   srcIds:['30m','1h'],target:0.50},
+  {label:'2h',  minutes:120,  srcIds:['30m','1h'],target:0.75},
+  {label:'4h',  minutes:240,  srcIds:['1h','4h'], target:1.00},
+  {label:'6h',  minutes:360,  srcIds:['1h','6h'], target:1.25},
+  {label:'12h', minutes:720,  srcIds:['4h','6h'], target:1.75},
+  {label:'24h', minutes:1440, srcIds:['6h','1d'], target:2.50},
+];
+const K=10, LOOKBACK=10, DECAY=0.5, TIMEOUT=12000, RECENT_N=10;
+const MAX_EVAL=120, YIELD_EVERY=15, MIN_EDGE=5;
+// Stability: smooth live fingerprint over last N completed candles (exclude live)
+const SMOOTH_N=3;
+// Hysteresis: GO needs conf >= minConf+HYST_UP; stays GO until conf < minConf-HYST_DN
+const HYST_UP=0.02, HYST_DN=0.03;
+const DIMS=['vel','acc','jrk','rangePos','distFromHi','bodyRatio','regSlope','volMom','wickBalance'];
+const API_FALLBACKS=[
+  'https://data-api.binance.vision/api/v3/klines',
+  'https://api.binance.us/api/v3/klines',
+];
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+function loadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem('wave_v19')||'{}');
+    if(s.pair) document.getElementById('pairSelect').value=s.pair;
+    if(s.maker!=null) document.getElementById('makerFee').value=s.maker;
+    if(s.taker!=null) document.getElementById('takerFee').value=s.taker;
+    if(s.buf!=null)   document.getElementById('entryBuffer').value=s.buf;
+    if(s.conf!=null)  document.getElementById('minConf').value=s.conf;
+  }catch(e){}
+  updateFeeDisplay();
+}
+function saveSettings(){
+  try{
+    localStorage.setItem('wave_v19',JSON.stringify({
+      pair: document.getElementById('pairSelect').value,
+      maker:document.getElementById('makerFee').value,
+      taker:document.getElementById('takerFee').value,
+      buf:  document.getElementById('entryBuffer').value,
+      conf: document.getElementById('minConf').value,
+    }));
+  }catch(e){}
+}
+function updateFeeDisplay(){
+  const rt=(parseFloat(document.getElementById('makerFee').value)||0)
+          +(parseFloat(document.getElementById('takerFee').value)||0);
+  document.getElementById('rtDisp').textContent=rt.toFixed(2)+'%';
+  document.getElementById('bufDisp').textContent=(parseFloat(document.getElementById('entryBuffer').value)||0).toFixed(2)+'%';
+}
+function toggleSettings(){
+  const b=document.getElementById('sbody');
+  const open=b.classList.toggle('open');
+  document.getElementById('sarrow').textContent=open?'\u25b4':'\u25be';
+}
+
+// ── PROGRESS LOG ─────────────────────────────────────────────────────────────
+let logEl=null;
+function initLog(){
+  document.getElementById('scroll').innerHTML=
+    '<div class="plog" id="plog"><div class="plog-title">Running analysis...</div></div>';
+  logEl=document.getElementById('plog');
+}
+function log(icon,text,val,err){
+  val=val||'';err=!!err;
+  if(!logEl)return;
+  const d=document.createElement('div');d.className='ll';
+  d.innerHTML='<span class="li">'+icon+'</span><span class="lt">'+text+'</span>'
+    +'<span class="'+(err?'le':'lv')+'">'+val+'</span>';
+  logEl.appendChild(d);
+  d.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function replaceLog(icon,text,val,err){
+  val=val||'';err=!!err;
+  if(!logEl)return;
+  const ls=logEl.querySelectorAll('.ll');
+  const l=ls[ls.length-1];if(!l)return;
+  l.querySelector('.li').textContent=icon;
+  l.querySelector('.lt').textContent=text;
+  const v=l.querySelector('.lv,.le');
+  if(v){v.textContent=val;v.className=err?'le':'lv';}
+}
+
+// ── FETCH ─────────────────────────────────────────────────────────────────────
+async function fetchCandles(symbol,interval,limit){
+  let lastErr=null;
+  for(const base of API_FALLBACKS){
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>ctrl.abort(),TIMEOUT);
+    try{
+      const res=await fetch(base+'?symbol='+symbol+'&interval='+interval+'&limit='+limit,{signal:ctrl.signal});
+      clearTimeout(t);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const raw=await res.json();
+      if(!Array.isArray(raw)||!raw.length) throw new Error('Empty response');
+      return raw.map(k=>({t:+k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[5]}));
+    }catch(e){clearTimeout(t);lastErr=e.name==='AbortError'?new Error('Timed out'):e;}
+  }
+  throw lastErr||new Error('All sources failed');
+}
+
+// ── PHYSICS + CONTEXT ─────────────────────────────────────────────────────────
+function deriv(a){
+  return a.map((v,i)=>{
+    if(i===0) return a[1]-a[0];
+    if(i===a.length-1) return a[i]-a[i-1];
+    return (a[i+1]-a[i-1])/2;
+  });
+}
+function buildPhysics(candles){
+  const closes=candles.map(x=>x.c);
+  const vel=deriv(closes),acc=deriv(vel),jrk=deriv(acc);
+  return candles.map((x,i)=>{
+    const pv=x.c>0?vel[i]/x.c*100:0;
+    const pa=x.c>0?acc[i]/x.c*100:0;
+    const pj=x.c>0?jrk[i]/x.c*100:0;
+    const lb=Math.min(30,i+1);
+    const win=candles.slice(Math.max(0,i-lb+1),i+1);
+    const hi30=Math.max(...win.map(w=>w.h));
+    const lo30=Math.min(...win.map(w=>w.l));
+    const rangePos=(hi30-lo30)>0?(x.c-lo30)/(hi30-lo30):0.5;
+    const distFromHi=hi30>0?(hi30-x.c)/hi30*100:0;
+    const range=x.h-x.l,body=Math.abs(x.c-x.o);
+    const bodyRatio=range>0?body/range:0;
+    const uw=range>0?(x.h-Math.max(x.c,x.o))/range:0;
+    const lw=range>0?(Math.min(x.c,x.o)-x.l)/range:0;
+    const wickBalance=lw-uw;
+    const rw=candles.slice(Math.max(0,i-13),i+1).map(w=>w.c);
+    let regSlope=0;
+    if(rw.length>=4){
+      const m=rw.length;let sx=0,sy=0,sxy=0,sx2=0;
+      for(let j=0;j<m;j++){sx+=j;sy+=rw[j];sxy+=j*rw[j];sx2+=j*j;}
+      const den=m*sx2-sx*sx;
+      if(den) regSlope=(m*sxy-sx*sy)/den/(rw[m-1]||1)*100;
+    }
+    const vw=candles.slice(Math.max(0,i-14),i+1).map(w=>w.v);
+    const rv=vw.slice(-5).reduce((a,b)=>a+b,0)/Math.min(5,vw.length);
+    const pv2=vw.slice(0,-5).reduce((a,b)=>a+b,0)/Math.max(1,vw.length-5);
+    const volMom=pv2>0?rv/pv2:1;
+    return{t:x.t,o:x.o,h:x.h,l:x.l,c:x.c,v:x.v,
+      vel:pv,acc:pa,jrk:pj,rangePos,distFromHi,bodyRatio,wickBalance,regSlope,volMom};
+  });
+}
+
+// ── SMOOTHED LIVE SNAPSHOT ────────────────────────────────────────────────────
+// Average last SMOOTH_N COMPLETED candles (exclude index n-1 which is live/forming).
+// This is the key stability fix: a forming candle has partial V/A/J; averaging
+// completed candles means a 10-second re-run sees identical physics.
+function smoothedLivePhysics(series){
+  const n=series.length;
+  if(n<SMOOTH_N+2) return series[n-1]; // fallback
+  // Use candles n-1-SMOOTH_N .. n-2 (completed, not the forming candle)
+  const window=series.slice(n-1-SMOOTH_N, n-1);
+  const avg={};
+  for(const d of DIMS){
+    avg[d]=window.reduce((s,c)=>s+(c[d]||0),0)/window.length;
+  }
+  // Price and OHLCV still from latest candle
+  const last=series[n-1];
+  return Object.assign({},last,avg);
+}
+
+// ── KNN CORE (v20) ────────────────────────────────────────────────────────────
+// Performance + correctness overhaul. Same outputs the UI consumes, but:
+//  • Outcomes are REALISED net returns, not binary hit/miss. A miss is scored at
+//    the actual close-to-close move (market sell at horizon), not just -fees.
+//  • Fingerprints are precomputed ONCE per series as a flat Float32Array and
+//    shared across every horizon (only the label/outcome window differs by hc).
+//  • Normalised Euclidean distance: the per-dim MEAN cancels in any difference,
+//    so distance needs only per-dim inverse-std (tiled). This removes a whole
+//    normalisation pass and lets us swap in a train-only scaling for the backtest
+//    with no extra fingerprint rebuild.
+const EXCLUDE_TAIL=2;            // never let the forming candle (or its neighbour) into the pool
+const DIMW=LOOKBACK*DIMS.length; // fingerprint width (10×9 = 90)
+
+function distToSim(d){return 1/(1+d);}
+
+// Per-dim inverse std over series[lo..hi], tiled across all LOOKBACK slots.
+function computeInvStd(series,lo,hi){
+  const D=DIMS.length, inv=new Float32Array(DIMW);
+  for(let d=0;d<D;d++){
+    let s=0,c=0;
+    for(let i=lo;i<=hi;i++){s+=series[i][DIMS[d]]||0;c++;}
+    const mean=s/Math.max(1,c);
+    let v2=0;
+    for(let i=lo;i<=hi;i++){const v=(series[i][DIMS[d]]||0)-mean;v2+=v*v;}
+    const std=Math.sqrt(v2/Math.max(1,c))||1e-9, id=1/std;
+    for(let slot=0;slot<LOOKBACK;slot++) inv[slot*D+d]=id;
+  }
+  return inv;
+}
+
+// Flat raw fingerprint rows: row i (valid for i>=LOOKBACK-1) = concat of the last
+// LOOKBACK candles' raw features. No normalisation stored — applied at distance time.
+function buildRawRows(series){
+  const n=series.length, D=DIMS.length, rows=new Float32Array(n*DIMW);
+  for(let i=LOOKBACK-1;i<n;i++){
+    let off=i*DIMW, p=0;
+    for(let k=i-LOOKBACK+1;k<=i;k++){
+      const c=series[k];
+      for(let d=0;d<D;d++) rows[off+(p++)]=c[DIMS[d]]||0;
+    }
+  }
+  return rows;
+}
+
+// Build the LIVE query row from LOOKBACK-1 completed candles + the smoothed live one.
+function smoothRawRow(series){
+  const n=series.length;
+  if(n<LOOKBACK+1) return null;
+  const smoothed=smoothedLivePhysics(series);
+  const win=series.slice(n-1-LOOKBACK, n-1).concat([smoothed]); // last = smoothed live
+  if(win.length<LOOKBACK) return null;
+  const D=DIMS.length, q=new Float32Array(DIMW);
+  let p=0;
+  for(const c of win) for(let d=0;d<D;d++) q[p++]=c[DIMS[d]]||0;
+  return q;
+}
+
+// Cache rows + full-series scaling on the series object (shared across horizons).
+function ctxFor(series){
+  if(series.__ctx) return series.__ctx;
+  series.__ctx={rows:buildRawRows(series), invFull:computeInvStd(series,0,series.length-1)};
+  return series.__ctx;
+}
+
+// Squared scaled distance: pool row at offset `aOff` vs a query Float32Array.
+function d2q(rows,aOff,q,inv){let s=0;for(let j=0;j<DIMW;j++){const t=(rows[aOff+j]-q[j])*inv[j];s+=t*t;}return s;}
+// Squared scaled distance between two pool rows.
+function d2r(rows,aOff,bOff,inv){let s=0;for(let j=0;j<DIMW;j++){const t=(rows[aOff+j]-rows[bOff+j])*inv[j];s+=t*t;}return s;}
+
+// THE single source of truth for "what did this trade actually do?".
+// Win  = price's HIGH touches the +target level within hc candles → limit sell fills,
+//        realised net ≈ target − round-trip fee.
+// Loss = target never touched → market sell at the horizon close, realised net =
+//        (closeAtHorizon / entry − 1)·100 − round-trip fee. This is the fix that
+//        stops every miss from being scored as a harmless −fee scratch.
+function evalTrade(series,i,hc,target,rtFee){
+  const n=series.length, base=series[i].c, lvl=base*(1+target/100);
+  let hit=false;
+  for(let f=1;f<=hc&&(i+f)<n;f++){ if(series[i+f].h>=lvl){hit=true;break;} }
+  const end=Math.min(i+hc,n-1);
+  const ret=hit ? (target-rtFee) : ((series[end].c/base-1)*100-rtFee);
+  return{hit,ret};
+}
+
+async function knnFull(series,hc,target,rtFee,onProg){
+  const prog=onProg||(()=>{});
+  const n=series.length;
+  const minI=LOOKBACK-1, maxI=n-1-hc-EXCLUDE_TAIL;
+  prog('n='+n+' hc='+hc+' pool='+Math.max(0,maxI-minI));
+  await tick();
+  if(maxI<=minI+LOOKBACK){prog('insufficient data');return null;}
+
+  const ctx=ctxFor(series), rows=ctx.rows, inv=ctx.invFull;
+  const q=smoothRawRow(series);
+  if(!q){prog('no fingerprint');return null;}
+
+  // Pool: deterministic, idx-ordered. Carries realised outcome + recency weight.
+  const pool=[];
+  const span=(maxI>minI)?(maxI-minI):1;
+  for(let i=minI;i<=maxI;i++){
+    const recency=(i-minI)/span;
+    const rw=Math.exp(-(1-recency)/DECAY);
+    const o=evalTrade(series,i,hc,target,rtFee);
+    pool.push({off:i*DIMW,rw,hit:o.hit,ret:o.ret,idx:i,t:series[i].t,price:series[i].c});
+  }
+  if(pool.length<LOOKBACK+2){prog('pool too small: '+pool.length);return null;}
+
+  const baseRate=pool.filter(p=>p.hit).length/pool.length;
+  prog('pool='+pool.length+' base='+(baseRate*100).toFixed(0)+'%');
+  await tick();
+
+  // Live neighbours vs the smoothed query.
+  for(const p of pool){ p.sim=distToSim(Math.sqrt(d2q(rows,p.off,q,inv))); p.wt=p.sim*p.rw; }
+  pool.sort((a,b)=>b.wt-a.wt||b.idx-a.idx);
+  const neighbours=pool.slice(0,Math.min(K,pool.length));
+
+  let wH=0,wT=0,wR=0;
+  for(const nb of neighbours){wT+=nb.wt;wR+=nb.wt*nb.ret;if(nb.hit)wH+=nb.wt;}
+  const confidence=wT>1e-9?wH/wT:0;                 // P(touch target) — drives the UI
+  const expNet=wT>1e-9?wR/wT:null;                  // realised expected net %, after fees
+  const avgSim=neighbours.reduce((s,nb)=>s+nb.sim,0)/neighbours.length;
+  const misses=neighbours.filter(nb=>!nb.hit);
+  const avgLoss=misses.length?misses.reduce((s,nb)=>s+nb.ret,0)/misses.length:null;
+  prog('conf='+(confidence*100).toFixed(0)+'% ev='+(expNet!=null?expNet.toFixed(2):'n/a')+'%');
+  await tick();
+
+  // PURGED cross-validation. For each eval sample, neighbours sharing any candle
+  // or outcome window with it are removed (|Δidx| < LOOKBACK+hc). This kills the
+  // overlap leakage that inflated the old leave-one-out metrics.
+  const purge=LOOKBACK+hc;
+  const cvThresh=Math.max(0.3,baseRate+MIN_EDGE/100);
+  const step=Math.max(1,Math.floor(pool.length/MAX_EVAL));
+  const byIdx=pool.slice().sort((a,b)=>a.idx-b.idx);
+  const evalSet=byIdx.filter((_,i)=>i%step===0).slice(0,MAX_EVAL);
+  prog('purged CV '+evalSet.length+' samples (thr='+(cvThresh*100).toFixed(0)+'%)...');
+  await tick();
+
+  let TP=0,FP=0,TN=0,FN=0;
+  for(let ei=0;ei<evalSet.length;ei++){
+    const tgt=evalSet[ei];
+    const sc=[];
+    for(const p of pool){
+      if(Math.abs(p.idx-tgt.idx)<purge) continue;   // purge overlapping windows
+      sc.push({hit:p.hit,wt:distToSim(Math.sqrt(d2r(rows,p.off,tgt.off,inv)))*p.rw});
+    }
+    sc.sort((a,b)=>b.wt-a.wt);
+    const peers=sc.slice(0,K);
+    if(!peers.length)continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    const predBuy=(pw>1e-9?ph/pw:0)>=cvThresh;
+    if(predBuy&&tgt.hit)TP++; else if(predBuy)FP++; else if(!tgt.hit)TN++; else FN++;
+    if((ei+1)%YIELD_EVERY===0||(ei+1)===evalSet.length){
+      prog('CV '+(ei+1)+'/'+evalSet.length+' TP='+TP+' FP='+FP+' TN='+TN+' FN='+FN);
+      await tick();
+    }
+  }
+  const tot=TP+FP+TN+FN;
+  const accuracy   =tot>0?(TP+TN)/tot:null;
+  const precision  =(TP+FP)>0?TP/(TP+FP):null;
+  const recall     =(TP+FN)>0?TP/(TP+FN):null;
+  const f1         =precision!=null&&recall!=null&&(precision+recall)>0?2*precision*recall/(precision+recall):null;
+  const specificity=(TN+FP)>0?TN/(TN+FP):null;
+  const mccd=Math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
+  const mcc        =mccd>0?(TP*TN-FP*FN)/mccd:null;
+  prog('acc='+(accuracy!=null?(accuracy*100).toFixed(0)+'%':'n/a')+' MCC='+(mcc!=null?mcc.toFixed(2):'n/a'));
+  await tick();
+
+  return{confidence,expNet,avgLoss,n:neighbours.length,totalPool:pool.length,avgSim,
+    pool,series,hc,target,baseRate,
+    metrics:{accuracy,precision,recall,f1,specificity,mcc,baseRate,TP,FP,TN,FN,evalN:tot,cvThresh}};
+}
+
+// ── BACKTEST ──────────────────────────────────────────────────────────────────
+// Honest out-of-sample evaluation:
+//  • 70/30 time split with an EMBARGO gap of (LOOKBACK+hc) between train and test,
+//    so no training window's features or outcome window leak into the test set.
+//  • Scaling (inverse-std) recomputed on TRAIN candles only — no normalisation leakage.
+//  • Test trades are NON-OVERLAPPING: once a trade is entered, candles inside its
+//    holding period are skipped, so the same move can't be counted ten times.
+//  • P&L uses the realised net return from evalTrade (real losses included).
+async function runBacktest(srcR,liveMinConf,rtFee,onProg){
+  const prog=onProg||(()=>{});
+  if(!srcR||!srcR.pool||srcR.pool.length<30) return null;
+  const series=srcR.series, hc=srcR.hc, target=srcR.target;
+  const ctx=ctxFor(series), rows=ctx.rows;
+  const P=srcR.pool.slice().sort((a,b)=>a.idx-b.idx);
+
+  const split=Math.floor(P.length*0.7);
+  if(split<10||P.length-split<8) { prog('pool too small for split'); return null; }
+  const cutIdx=P[split].idx, gap=LOOKBACK+hc;
+  const train=P.filter(p=>p.idx<=cutIdx);
+  const test =P.filter(p=>p.idx>=cutIdx+gap);          // embargo
+  if(train.length<10||test.length<5){ prog('insufficient after embargo'); return null; }
+
+  // Train-only scaling — rebuild inverse-std from the train candle range.
+  const trainLo=train[0].idx-(LOOKBACK-1), trainHi=train[train.length-1].idx;
+  const invTr=computeInvStd(series,Math.max(0,trainLo),trainHi);
+
+  const baseTrainHitRate=train.filter(p=>p.hit).length/train.length;
+  const btThresh=Math.max(baseTrainHitRate+MIN_EDGE/200,
+                          Math.min(baseTrainHitRate+0.25, liveMinConf*0.85));
+  prog('train='+train.length+' test='+test.length+' gap='+gap+' thr='+(btThresh*100).toFixed(0)+'%');
+  await tick();
+
+  const trades=[]; let equity=0, nextFree=-1;
+  for(let ti=0;ti<test.length;ti++){
+    const tgt=test[ti];
+    if(tgt.idx<nextFree) continue;                     // still inside a held trade
+    const sc=train.map(p=>({hit:p.hit,wt:distToSim(Math.sqrt(d2r(rows,p.off,tgt.off,invTr)))*p.rw}));
+    sc.sort((a,b)=>b.wt-a.wt);
+    const peers=sc.slice(0,K); if(!peers.length) continue;
+    let pw=0,ph=0;
+    for(const p of peers){pw+=p.wt;if(p.hit)ph+=p.wt;}
+    const conf=pw>1e-9?ph/pw:0;
+    if(conf>=btThresh&&(conf-baseTrainHitRate)*100>=MIN_EDGE){
+      const pnl=tgt.ret;                               // realised net (real loss on misses)
+      equity+=pnl; nextFree=tgt.idx+hc;                // no overlap
+      trades.push({t:tgt.t,entry:tgt.price,conf:conf*100,hit:tgt.hit,pnl,equity});
+    }
+    if((ti+1)%10===0){prog('test '+(ti+1)+'/'+test.length+'...');await tick();}
+  }
+  if(!trades.length) return{trades:[],wins:0,losses:0,winRate:null,totalPnl:0,
+    avgWin:0,avgLoss:0,btThresh,gap,note:'No signals fired at this threshold'};
+  const wins=trades.filter(t=>t.hit), losses=trades.filter(t=>!t.hit);
+  const winRate=wins.length/trades.length, totalPnl=trades.reduce((a,t)=>a+t.pnl,0);
+  prog(trades.length+' indep trades, '+(winRate*100).toFixed(0)+'% win, '+(totalPnl>=0?'+':'')+totalPnl.toFixed(2)+'%');
+  await tick();
+  return{trades,wins:wins.length,losses:losses.length,winRate,totalPnl,btThresh,gap,
+    avgWin:wins.length?wins.reduce((a,t)=>a+t.pnl,0)/wins.length:0,
+    avgLoss:losses.length?losses.reduce((a,t)=>a+t.pnl,0)/losses.length:0};
+}
+
+// ── TRADE PRICING ─────────────────────────────────────────────────────────────
+function calcTrade(lastPrice,target,makerFee,takerFee,entryBuf){
+  const entryPrice=lastPrice*(1+entryBuf/100);
+  const sellPrice=entryPrice*(1+(target+takerFee)/100)/(1-makerFee/100);
+  const actualNet=((sellPrice/entryPrice)*(1-makerFee/100)-(1+takerFee/100))*100;
+  return{entryPrice,sellPrice,actualNet};
+}
+
+// ── SELL TIMER ────────────────────────────────────────────────────────────────
+let sellTimerInterval=null;
+function startSellTimer(horizonMinutes,candleMinutes){
+  clearInterval(sellTimerInterval);
+  const now=Date.now(),ms=candleMinutes*60*1000;
+  const closeTime=now+(ms-(now%ms))+(horizonMinutes/candleMinutes-1)*ms;
+  function update(){
+    const cdEl=document.getElementById('sell-countdown');
+    const clkEl=document.getElementById('sell-clock');
+    if(!cdEl&&!clkEl){clearInterval(sellTimerInterval);return;}
+    if(clkEl) clkEl.textContent=new Date(closeTime).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    const rem=closeTime-Date.now();
+    if(rem<=0){if(cdEl)cdEl.textContent='NOW -- exit position';clearInterval(sellTimerInterval);return;}
+    const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000),s=Math.floor((rem%60000)/1000);
+    if(cdEl) cdEl.textContent=(h>0?h+'h ':'')+m+'m '+s+'s';
+  }
+  update();sellTimerInterval=setInterval(update,1000);
+}
+
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────────
+let busy=false, seriesMap={};
+
+// HYSTERESIS STATE: stores last decision per horizon label
+// { [hzLabel]: { state, confidence, ts } }
+let hystState={};
+
+// ── MAIN ──────────────────────────────────────────────────────────────────────
+async function runAnalysis(){
+  if(busy)return;
+  busy=true;
+  clearInterval(sellTimerInterval);
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('pulse').className='pulse busy';
+
+  const symbol=document.getElementById('pairSelect').value;
+  const rawMinConf=Math.max(0.40,Math.min(0.95,parseFloat(document.getElementById('minConf').value)/100||0.55));
+  const makerFee=parseFloat(document.getElementById('makerFee').value)||0;
+  const takerFee=parseFloat(document.getElementById('takerFee').value)||0;
+  const entryBuf=parseFloat(document.getElementById('entryBuffer').value)||0.10;
+  const rtFee=makerFee+takerFee;
+
+  initLog();
+  log('&#128269;','Analyzing '+symbol,'');
+  log('&#128225;','Stability: smoothed fingerprint ('+SMOOTH_N+' candles) + hysteresis (+'+
+    (HYST_UP*100).toFixed(0)+'pp entry / -'+(HYST_DN*100).toFixed(0)+'pp exit)');
+  await tick();
+
+  // FETCH
+  seriesMap={};let fetchErrors=0;
+  for(const src of SOURCES){
+    log('&#9203;','Fetching '+src.label+'...','');
+    try{
+      const candles=await fetchCandles(symbol,src.interval,src.limit);
+      seriesMap[src.id]=buildPhysics(candles);
+      replaceLog('&#9989;',src.label,candles.length+' candles');
+    }catch(e){replaceLog('&#10060;',src.label,e.message,true);fetchErrors++;}
+    await tick();
+  }
+  if(fetchErrors===SOURCES.length){
+    log('&#128683;','All fetches failed','Check connection',true);finishRun(false);return;
+  }
+
+  // Live snapshot using SMOOTHED physics
+  const lp=(()=>{
+    for(const id of['30m','1h','4h']){
+      const s=seriesMap[id];
+      if(s&&s.length>=SMOOTH_N+2){
+        const smoothed=smoothedLivePhysics(s);
+        return{price:s[s.length-1].c,vel:smoothed.vel,acc:smoothed.acc,jrk:smoothed.jrk,src:id,candle:smoothed};
+      }
+    }
+    return null;
+  })();
+
+  // KNN PER HORIZON
+  log('&#129504;','KNN pattern match...','K='+K+', smooth='+SMOOTH_N+', excl-tail=2');
+  await tick();
+  const hResults=[];
+  for(const hz of HORIZONS){
+    log('&#9203;',hz.label,'starting...');
+    const srcR=[];
+    for(const sid of hz.srcIds){
+      const s=seriesMap[sid];if(!s)continue;
+      const src=SOURCES.find(x=>x.id===sid);
+      const hc=Math.round(hz.minutes/src.minutes);
+      try{
+        const r=await knnFull(s,hc,hz.target,rtFee,
+          msg=>replaceLog('&#9881;',hz.label+'/'+sid,msg));
+        if(r) srcR.push({srcId:sid,candleMinutes:src.minutes,...r});
+      }catch(e){replaceLog('&#10060;',hz.label+'/'+sid,e.message,true);}
+      await tick();
+    }
+    // Weighted average confidence + realised expected value (avgSim-weighted)
+    let conf=null,nn=0,tp=0,wSum=0,wConf=0,wEV=0,avgSim=0,baseRate=null,evN=0,wLoss=0,lossW=0;
+    for(const r of srcR){
+      const w=r.avgSim||0.5;
+      wConf+=r.confidence*w;wSum+=w;
+      if(r.expNet!=null){wEV+=r.expNet*w;evN+=w;}
+      if(r.avgLoss!=null){wLoss+=r.avgLoss*w;lossW+=w;}
+      nn=Math.max(nn,r.n);tp+=r.totalPool;avgSim+=r.avgSim;
+      baseRate=baseRate==null?r.baseRate:(baseRate+r.baseRate)/2;
+    }
+    if(srcR.length){conf=wSum>1e-9?wConf/wSum:null;avgSim/=srcR.length;}
+    const bsrc=srcR.length?srcR.reduce((a,b)=>a.totalPool>b.totalPool?a:b):null;
+    const edge=conf!=null&&baseRate!=null?(conf-baseRate)*100:null;
+
+    // HYSTERESIS: apply +/- band around minConf
+    // Entry: must beat minConf + HYST_UP
+    // Exit:  drops below minConf - HYST_DN (sticky in between)
+    const entryThresh=rawMinConf+HYST_UP;
+    const exitThresh=rawMinConf-HYST_DN;
+    const prev=hystState[hz.label];
+    let hystFull=false;
+    if(conf!=null&&(edge||0)>=MIN_EDGE){
+      if(prev&&prev.validity==='full'){
+        // Already in a full signal — stay until conf drops below exit threshold
+        hystFull=conf>=exitThresh;
+      }else{
+        // New signal — require conf to beat entry threshold
+        hystFull=conf>=entryThresh;
+      }
+    }
+
+    let validity='none';
+    if(conf!=null&&nn>=3){
+      if(hystFull) validity='full';
+      else if((edge||-99)>=MIN_EDGE) validity='lean';
+    }
+    // Update hysteresis memory
+    hystState[hz.label]={validity,confidence:conf,ts:Date.now()};
+
+    const expNet=evN>1e-9?wEV/evN:null;            // realised expected net %, after fees
+    const avgLoss=lossW>1e-9?wLoss/lossW:null;      // avg realised loss on a miss
+    const srcConfs=srcR.map(r=>r.confidence);
+    const srcAgree=srcConfs.length>1?(Math.max(...srcConfs)-Math.min(...srcConfs))<0.12:true;
+
+    hResults.push({hz,confidence:conf,n:nn,totalPool:tp,avgSim,srcResults:srcR,bsrc,
+      validity,edge,expNet,avgLoss,baseRate,srcAgree,entryThresh,exitThresh});
+
+    const icon=validity==='full'?'&#128994;':validity==='lean'?'&#128993;':'&#9898;';
+    replaceLog(icon,hz.label,
+      conf!=null?'conf='+(conf*100).toFixed(0)+'% edge='+(edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'n/a')
+        +' ev='+(expNet!=null?(expNet>=0?'+':'')+expNet.toFixed(2)+'%':'n/a'):'no data');
+    await tick();
+  }
+
+  // BACKTEST
+  log('&#128202;','Backtesting (out-of-sample)...','');await tick();
+  const btResults={};
+  for(const r of hResults){
+    if(!r.bsrc||!r.bsrc.pool||r.bsrc.pool.length<30)continue;
+    try{
+      const bt=await runBacktest(r.bsrc,rawMinConf,rtFee,
+        msg=>replaceLog('&#128202;','BT '+r.hz.label,msg));
+      if(bt) btResults[r.hz.label]=bt;
+    }catch(e){replaceLog('&#10060;','BT '+r.hz.label,e.message,true);}
+    await tick();
+  }
+
+  // DECISION
+  const decision=buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,rawMinConf);
+  log(decision.state==='GO'?'&#127919;':decision.state==='SOFT'?'&#8599;':decision.state==='WATCH'?'&#9680;':'&#9208;',
+    'Decision: '+decision.stateLabel,decision.oneLiner);
+  await tick();
+
+  try{renderAll({symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,rawMinConf});}
+  catch(e){log('&#128683;','Render error',e.message,true);}
+  finishRun(true);
+}
+
+// ── DECISION ENGINE ───────────────────────────────────────────────────────────
+function buildDecision(hResults,btResults,makerFee,takerFee,entryBuf,rtFee,lp,rawMinConf){
+  const withEV=hResults
+    .filter(r=>r.expNet!=null&&r.expNet>0)
+    .map(r=>{
+      const bt=btResults[r.hz.label];
+      const boost=bt&&bt.winRate!=null?(bt.winRate>=0.55?1.1:bt.winRate<0.45?0.85:1.0):1.0;
+      return{...r,adjEV:r.expNet*boost};
+    })
+    .sort((a,b)=>b.adjEV-a.adjEV);
+
+  const fullH=withEV.filter(r=>r.validity==='full');
+  const leanH=withEV.filter(r=>r.validity==='lean');
+  const GO_THRESH=0.30;
+  const bestFull=fullH.find(r=>r.adjEV>=GO_THRESH);
+  const anyFull=fullH.length?fullH[0]:null;
+
+  // Non-overlapping stack
+  const stackPool=[...fullH,...leanH].sort((a,b)=>b.adjEV-a.adjEV);
+  const stackPlan=[];let stackTotal=0;
+  for(const r of stackPool){
+    if(stackPlan.length>=4)break;
+    const overlap=stackPlan.some(p=>
+      Math.min(p.hz.minutes,r.hz.minutes)/Math.max(p.hz.minutes,r.hz.minutes)>0.5);
+    if(!overlap){stackPlan.push(r);stackTotal+=r.adjEV;}
+  }
+
+  const buildingUp=lp?hResults.filter(r=>
+    r.validity==='none'&&lp.candle.vel>0&&lp.candle.acc>0&&(r.edge||-99)>=0):[];
+
+  let state,stateLabel,oneLiner,primaryHorizon;
+  if(bestFull){
+    const stackBetter=stackPlan.length>=2&&stackTotal>bestFull.adjEV*1.3
+      &&stackPlan.some(r=>r.validity==='full');
+    if(stackBetter){
+      state='SOFT';stateLabel='Soft Signal';
+      oneLiner=bestFull.hz.label+' trade available (+'+bestFull.adjEV.toFixed(2)+'% EV) but '
+        +stackPlan.length+'-trade stack looks better (~+'+stackTotal.toFixed(2)+'% combined).';
+      primaryHorizon=bestFull;
+    }else{
+      state='GO';stateLabel='Take the Trade';
+      oneLiner=bestFull.hz.label+' horizon, '+(bestFull.confidence*100).toFixed(0)
+        +'% KNN confidence, +'+(bestFull.edge||0).toFixed(0)+'pp edge, ~+'
+        +bestFull.adjEV.toFixed(2)+'% expected net.';
+      primaryHorizon=bestFull;
+    }
+  }else if(anyFull){
+    state='SOFT';stateLabel='Soft Signal';
+    oneLiner=anyFull.hz.label+' has solid confidence ('+(anyFull.confidence*100).toFixed(0)
+      +'%, +'+(anyFull.edge||0).toFixed(0)+'pp edge) but modest EV (+'+anyFull.adjEV.toFixed(2)+'%).';
+    primaryHorizon=anyFull;
+  }else if(leanH.length>=2){
+    state='SOFT';stateLabel='Stack Opportunity';
+    const top2=leanH.slice(0,2);
+    oneLiner='No single high-confidence trade. Stack '+top2.map(r=>r.hz.label).join('+')
+      +' for ~+'+top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined. Lower conviction -- size down.';
+    primaryHorizon=leanH[0];
+  }else if(leanH.length===1){
+    state='WATCH';stateLabel='Cautious Watch';
+    const r=leanH[0];
+    oneLiner=r.hz.label+' shows +'+(r.edge||0).toFixed(0)+'pp edge ('
+      +(r.confidence*100).toFixed(0)+'% KNN) but is below the '
+      +(rawMinConf*100).toFixed(0)+'% threshold. Not a clean entry yet.';
+    primaryHorizon=null;
+  }else if(buildingUp.length>0){
+    state='WATCH';stateLabel='Signal Building';
+    oneLiner='No edge yet but velocity and acceleration are positive. Re-analyze in the next candle or two.';
+    primaryHorizon=null;
+  }else{
+    state='HOLD';stateLabel='Stand Down';
+    const bestAny=hResults.filter(r=>r.confidence!=null)
+      .sort((a,b)=>(b.edge||-99)-(a.edge||-99))[0];
+    oneLiner=bestAny&&(bestAny.edge||-99)>=0
+      ?'Best available: '+bestAny.hz.label+' at '+(bestAny.confidence*100).toFixed(0)
+        +'% KNN (+'+(bestAny.edge||0).toFixed(0)+'pp) -- not enough to act on.'
+      :'No horizon shows positive edge over base rate. Patience.';
+    primaryHorizon=null;
+  }
+
+  let tradeDetails=null;
+  if(primaryHorizon&&lp&&(state==='GO'||state==='SOFT')){
+    const td=calcTrade(lp.price,primaryHorizon.hz.target,makerFee,takerFee,entryBuf);
+    const src=primaryHorizon.bsrc?SOURCES.find(x=>x.id===primaryHorizon.bsrc.srcId):null;
+    tradeDetails={...td,target:primaryHorizon.hz.target,horizon:primaryHorizon.hz,
+      confidence:primaryHorizon.confidence,validity:primaryHorizon.validity,
+      candleMinutes:src?src.minutes:primaryHorizon.hz.minutes};
+  }
+
+  return{state,stateLabel,oneLiner,primaryHorizon,tradeDetails,
+    stackPlan,stackTotal,fullHorizons:fullH,leanHorizons:leanH,buildingUp,withEV};
+}
+
+function finishRun(ok){
+  busy=false;
+  document.getElementById('runBtn').disabled=false;
+  document.getElementById('pulse').className=ok?'pulse live':'pulse err';
+  document.getElementById('lastTs').textContent=new Date().toLocaleTimeString();
+  saveSettings();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fc(v){return v>0?'pos':v<0?'neg':'neu';}
+function fp(v,d){d=d!=null?d:4;return(v>=0?'+':'')+v.toFixed(d)+'%';}
+function mfmt(v){return v===null?'--':(v*100).toFixed(1)+'%';}
+function mcls(v,g,ok){
+  g=g!=null?g:0.6;ok=ok!=null?ok:0.5;
+  if(v===null)return'mna';if(v>=g)return'mhi';if(v>=ok)return'mmid';return'mlo';
+}
+function pf(p){return'$'+p.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function tick(){return new Promise(r=>setTimeout(r,20));}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+function toggleTable(id){const el=document.getElementById(id);if(el)el.classList.toggle('open');}
+function toggleInterp(id){
+  const b=document.getElementById(id+'-body');
+  const a=document.getElementById(id+'-arrow');
+  if(!b)return;
+  const open=b.classList.toggle('open');
+  if(a)a.textContent=open?'▲':'▼';
+}
+function bar(v){
+  if(v==null)return'';
+  return'<span class="bari" style="width:'+Math.round((v||0)*36)+'px;background:'
+    +(v>=.6?'var(--green)':v>=.5?'var(--gold)':'var(--red)')+'"></span>';
+}
+
+// ── STABILITY BADGE ───────────────────────────────────────────────────────────
+// Compare current decision to last stored in hystState timestamps
+function stabilityInfo(hResults){
+  // Count how many horizons changed validity since last run
+  let changed=0,total=0;
+  for(const r of hResults){
+    const prev=hystState[r.hz.label];
+    if(!prev||!prev.ts)continue;
+    total++;
+    const age=(Date.now()-prev.ts)/1000;
+    // Only flag as changed if this run differs from what was stored AND it was recent
+    if(age<120&&prev.validity!==r.validity) changed++;
+  }
+  if(total===0) return{label:'First run',cls:'new'};
+  if(changed===0) return{label:'Stable (no horizon changes)',cls:'stable'};
+  if(changed<=1)  return{label:'Minor shift ('+changed+' horizon)',cls:'shifted'};
+  return{label:'Significant shift ('+changed+' horizons)',cls:'shifted'};
+}
+
+// ── REC BODY ──────────────────────────────────────────────────────────────────
+function buildRecBody(decision,btResults,rawMinConf,rtFee){
+  const{state,stateLabel,primaryHorizon,stackPlan,stackTotal,leanHorizons}=decision;
+  const bt=primaryHorizon?btResults[primaryHorizon.hz.label]:null;
+  if(state==='GO'&&primaryHorizon){
+    const edge=(primaryHorizon.edge||0).toFixed(0);
+    const conf=(primaryHorizon.confidence*100).toFixed(0);
+    const br=primaryHorizon.baseRate!=null?Math.round(primaryHorizon.baseRate*100):null;
+    return'The pattern model finds a <b>'+conf+'% historical hit rate</b> on the <b>'
+      +primaryHorizon.hz.label+'</b> horizon'
+      +' -- <b>+'+edge+' points above the '+(br||'?')+'% base rate</b>'
+      +' across <b>'+primaryHorizon.totalPool+'</b> comparable historical setups.'
+      +(bt&&bt.winRate!=null?' Backtested over '+(bt.wins+bt.losses)+' out-of-sample trades: <b class="hi">'
+        +(bt.winRate*100).toFixed(0)+'% win rate</b>, <b class="hi">'
+        +(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% total P&amp;L</b> after fees.':'')
+      +'<br><br><b>Trade:</b> Limit buy now, limit sell at target. If limit sell not hit, market sell at candle close.';
+  }
+  if(state==='SOFT'&&stateLabel==='Stack Opportunity'){
+    const top2=leanHorizons.slice(0,2);
+    return'No single horizon clears the confidence threshold, but <b>'+leanHorizons.length
+      +' horizons</b> show a positive edge above the base rate.'
+      +'<br><br><b>Suggested stack:</b> '
+      +top2.map(r=>'<b>'+r.hz.label+'</b> (+'
+        +r.adjEV.toFixed(2)+'% EV, '+(r.confidence*100).toFixed(0)+'% conf)').join(' then ')
+      +' = <b class="hi">~+'
+      +top2.reduce((s,r)=>s+r.adjEV,0).toFixed(2)+'% combined</b>.'
+      +'<br><br><span class="warn">Below the '+(rawMinConf*100).toFixed(0)
+      +'% full-confidence threshold. Use smaller position sizes.</span>';
+  }
+  if(state==='SOFT'&&primaryHorizon){
+    const conf=(primaryHorizon.confidence*100).toFixed(0);
+    const edge=(primaryHorizon.edge||0).toFixed(0);
+    return'The <b>'+primaryHorizon.hz.label+'</b> horizon shows a solid edge -- <b>'
+      +conf+'% KNN confidence</b>, <b>+'+edge+'pp above base rate</b>.'
+      +(stackPlan.length>=2?' A '+stackPlan.length+'-trade stack across '
+        +stackPlan.map(r=>r.hz.label).join('/')
+        +' could reach ~+'+stackTotal.toFixed(2)+'% combined.':'')
+      +(primaryHorizon.validity==='lean'?'<br><br><span class="warn">Below the '
+        +(rawMinConf*100).toFixed(0)+'% full-send threshold. Consider a smaller position.</span>':'');
+  }
+  if(state==='WATCH'){
+    const r=leanHorizons&&leanHorizons[0];
+    if(r) return'The <b>'+r.hz.label+'</b> horizon shows +'
+      +(r.edge||0).toFixed(0)+'pp edge ('+(r.confidence*100).toFixed(0)+'% KNN)'
+      +' but falls below the '+(rawMinConf*100).toFixed(0)+'% confidence threshold.'
+      +'<br><br><span class="warn">Re-analyze in the next candle or two.</span>';
+    return'Velocity and acceleration are positive but no horizon has cleared the edge threshold yet.'
+      +' <span class="warn">Re-analyze shortly.</span>';
+  }
+  return'No horizon shows a meaningful edge over the base rate right now.'
+    +' KNN finds no historical precedent for a sustained move from this momentum fingerprint.'
+    +'<br><br><span class="warn">Patience -- re-analyze when conditions shift.</span>';
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function renderAll(opts){
+  const{symbol,lp,hResults,btResults,decision,makerFee,takerFee,entryBuf,rtFee,rawMinConf}=opts;
+  const{state,stateLabel,oneLiner,tradeDetails,stackPlan,stackTotal,primaryHorizon}=decision;
+  let h='';
+  const cc=state==='GO'?'go':state==='SOFT'?'soft':state==='WATCH'?'watch':'hold';
+  const stab=stabilityInfo(hResults);
+
+  // ── SECTION 1: RECOMMENDATION ──
+  h+='<div class="sec-head"><div class="sec-title">Section 1 \u2014 Recommendation</div>'
+    +'<div class="sec-sub">'+symbol+' \u00b7 '+new Date().toLocaleTimeString()+'</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s1\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s1-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s1-body">'
+    +'<b>Signal states:</b>'
+    +'<ul>'
+    +'<li><b class="hi">\u25b2 TAKE THE TRADE</b> \u2014 KNN confidence clears your threshold (+2pp hysteresis). Edge and expected value are positive. All conditions met for a full-size entry.</li>'
+    +'<li><b class="warn">\u2197 SOFT SIGNAL</b> \u2014 Real edge exists but either slightly below the threshold, or the stack of multiple horizons beats the single best trade. Consider a reduced position.</li>'
+    +'<li><b>\u25d0 WATCH</b> \u2014 Momentum is building (positive vel/acc) or one horizon has marginal edge. Not yet actionable \u2014 re-analyze on the next candle close.</li>'
+    +'<li><b>\u2014 HOLD</b> \u2014 No horizon shows a meaningful edge over the base rate. The model finds no historical precedent for a profitable move from this fingerprint. Sit out.</li>'
+    +'</ul>'
+    +'<b>Stability badge:</b> compares this run to the last. <b class="hi">Stable</b> means the signal didn\'t flip \u2014 higher confidence it\'s real. <b class="warn">Shifted</b> means horizons changed state; wait for confirmation if uncertain.'
+    +'<br><b>Hysteresis:</b> entry requires conf \u2265 threshold+2pp; the signal stays active until conf drops below threshold\u22123pp. This prevents rapid flip-flopping on borderline readings.'
+    +'<br><b>Trade box:</b> entry price includes your slippage buffer. Sell price is pre-calculated so your net return covers both fees. Set the limit sell order immediately after the buy fills.'
+    +'</div></div>'
+    +'<div class="rec-card '+cc+'">'
+    +'<div class="rec-eyebrow">Wave Analysis &middot; '+symbol+'</div>'
+    +'<div class="rec-action '+cc+'">'
+    +(state==='GO'?'&#9650; TAKE THE TRADE':state==='SOFT'?'&#8599; SOFT SIGNAL'
+      :state==='WATCH'?'&#9680; WATCH -- SIGNAL BUILDING':'&mdash; HOLD / WAIT')+'</div>'
+    +'<div class="stab-row">'
+    +'<span class="stab-badge '+stab.cls+'">'+stab.label+'</span>'
+    +'<span class="stab-conf">Smoothed over <b>'+SMOOTH_N+'</b> completed candles &middot; '
+    +'hysteresis +'+(HYST_UP*100).toFixed(0)+'pp/&minus;'+(HYST_DN*100).toFixed(0)+'pp</span>'
+    +'</div>'
+    +'<div class="rec-disclaimer">&#9888; Model output only -- not financial advice. Past patterns do not guarantee future results.</div>'
+    +'<div class="rec-body">'+buildRecBody(decision,btResults,rawMinConf,rtFee)+'</div>';
+
+  // Trade details box
+  if(tradeDetails&&lp){
+    const td=tradeDetails;
+    const isLean=td.validity==='lean';
+    h+='<div class="trade-box">'
+      +'<div class="trade-box-title">Trade Details &middot; '+td.horizon.label+' horizon &middot; target +'
+      +td.target.toFixed(2)+'% gross'+(isLean?' &middot; &#9888; below confidence threshold -- size down':'')+'</div>'
+      +'<div class="trade-row"><span class="trade-key">Limit buy</span>'
+      +'<span class="trade-val buy">'+pf(td.entryPrice)+'</span></div>'
+      +'<div class="trade-note">+'+entryBuf.toFixed(2)+'% above last '+pf(lp.price)+'</div>'
+      +'<div class="trade-row"><span class="trade-key">Limit sell</span>'
+      +'<span class="trade-val sell">'+pf(td.sellPrice)+'</span></div>'
+      +'<div class="trade-note">Set immediately after buy fills</div>'
+      +'<div class="trade-row"><span class="trade-key">Net after fees</span>'
+      +'<span class="trade-val net">+'+td.actualNet.toFixed(3)+'%</span></div>'
+      +'<div class="trade-math"><b>Fee math:</b> buy '+pf(td.entryPrice)
+      +' (taker '+takerFee.toFixed(2)+'%) &rarr; sell '+pf(td.sellPrice)
+      +' (maker '+makerFee.toFixed(2)+'%) &rarr; net <b>+'+td.actualNet.toFixed(3)+'%</b>'
+      +' &nbsp;|&nbsp; round-trip '+rtFee.toFixed(2)+'%</div>'
+      +'</div>';
+
+    if(stackPlan.length>=2){
+      h+='<div class="stack-plan">'
+        +'<div class="stack-title">Multi-Trade Stack &middot; ~+'+stackTotal.toFixed(2)+'% combined today</div>'
+        +'<div class="stack-steps">';
+      for(const r of stackPlan){
+        const isCurrent=r.hz.label===td.horizon.label;
+        const retCls='ss-ret'+(r.adjEV>=0.3?'':' warn');
+        h+='<div class="stack-step">'
+          +'<span class="ss-hz">'+r.hz.label+'</span>'
+          +'<span class="ss-detail">'+(r.confidence*100).toFixed(0)+'% conf &middot; '
+          +(r.validity==='full'?'&#10003; full':'~ lean')+'</span>'
+          +'<span class="'+retCls+'">+'
+          +r.adjEV.toFixed(2)+'%'+(isCurrent?' &larr; now':'')+'</span></div>';
+      }
+      h+='</div>'
+        +'<div class="stack-total"><span class="stack-total-label">Combined expected net</span>'
+        +'<span class="stack-total-val">~+'+stackTotal.toFixed(2)+'%</span></div></div>';
+    }
+
+    h+='<div class="sell-timer">'
+      +'<div class="sell-block">'
+      +'<div class="sell-timer-label">&#9201; Countdown to sell</div>'
+      +'<div class="sell-timer-val" id="sell-countdown">calculating...</div></div>'
+      +'<div class="sell-block">'
+      +'<div class="sell-timer-label">&#128336; Sell at (local time)</div>'
+      +'<div class="sell-timer-clock" id="sell-clock">&mdash;</div></div>'
+      +'<div class="sell-timer-detail">If limit sell not hit -- market sell at candle close</div>'
+      +'</div>';
+    setTimeout(()=>startSellTimer(td.horizon.minutes,td.candleMinutes),100);
+  }
+  h+='</div>';
+
+  // ── SECTION 2: HORIZON PATTERN MATCH ──
+  h+='<div class="sec-head"><div class="sec-title">Section 2 \u2014 Pattern Match by Horizon</div>'
+    +'<div class="sec-sub">KNN confidence vs base rate \u00b7 green=full signal \u00b7 amber=positive edge below threshold \u00b7 grey=no edge \u00b7 hysteresis applied</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s2\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s2-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s2-body">'
+    +'Each card covers one time horizon (1h through 24h). The model looks for historical candle sequences that most closely resemble the current momentum fingerprint, then asks: did price hit the target within this horizon?'
+    +'<ul>'
+    +'<li><span class="ik">Hit rate%</span> How often the K nearest historical matches saw price reach the target. The top bar.</li>'
+    +'<li><span class="ik">Base rate%</span> How often price hits that target at random on this timeframe. The bottom bar.</li>'
+    +'<li><span class="ik">Edge (pp)</span> Hit rate minus base rate. Only trade when edge \u2265 +'+MIN_EDGE+'pp \u2014 anything less is noise.</li>'
+    +'<li><span class="ik">Exp net EV</span> Average <b>realised</b> net outcome of the K most similar past setups: wins net \u2248 target \u2212 fees, misses net the actual close-to-close move minus fees. Positive = the trade paid on average <i>after real losses</i>.</li>'
+    +'<li><span class="ik">Pool / K</span> Pool is total comparable historical setups found. K is how many nearest neighbours voted. Larger pool = more reliable estimate.</li>'
+    +'<li><span class="ik">Accuracy/MCC</span> From cross-validation: how well the classifier separates hits from misses. MCC above +0.2 is meaningful.</li>'
+    +'<li><span class="ik">BT win/P&amp;L</span> Out-of-sample backtest on the held-out 30% of data. This is your most reliable forward-looking estimate.</li>'
+    +'</ul>'
+    +'<b>Source disagreement \u26a0:</b> if the two timeframe sources for a horizon give confidence scores more than 12pp apart, the signal is less reliable \u2014 size down.'
+    +'</div></div>'
+    +'<div class="hgrid">';
+  for(const r of hResults){
+    const conf=r.confidence;
+    const pp=conf!=null?(conf*100).toFixed(0):null;
+    const m=r.bsrc&&r.bsrc.metrics?r.bsrc.metrics:null;
+    const brPct=r.baseRate!=null?Math.round(r.baseRate*100):null;
+    const edge=r.edge;
+    const tier=r.validity==='full'?'hi':r.validity==='lean'?'mid':'none';
+    const bc=tier==='hi'?'var(--green)':tier==='mid'?'var(--gold)':'var(--dim)';
+    const bw=pp!=null?parseInt(pp):0;
+    const brW=brPct||0;
+    const bt=btResults[r.hz.label];
+    const noBuy=m&&(m.TP+m.FP)===0;
+    let why='';
+    if(conf==null) why='Insufficient data.';
+    else if((edge||-99)<0) why='Pattern is '+(Math.abs(edge||0)).toFixed(0)+'pp below base rate -- historically unfavourable.';
+    else if(r.validity==='none') why='+'+(edge||0).toFixed(0)+'pp edge present but below '+MIN_EDGE+'pp minimum. Not actionable.';
+    else if(r.validity==='lean') why='+'+(edge||0).toFixed(0)+'pp edge, KNN conf '
+      +pp+'% -- real signal but below the '+(rawMinConf*100).toFixed(0)+'% threshold (entry requires '
+      +(r.entryThresh!=null?(r.entryThresh*100).toFixed(0):'?')+'%+). Can stack.';
+    else if(bt&&bt.winRate!=null) why='Strong signal. Backtested '+(bt.winRate*100).toFixed(0)+'% win rate over '+(bt.wins+bt.losses)+' out-of-sample trades.';
+    else why=pp+'% hit rate vs '+(brPct||'?')+'% base rate -- +'+(edge||0).toFixed(0)+'pp edge.';
+
+    h+='<div class="hcard '+tier+'">'
+      +'<div class="hcard-top"><div class="hlabel">'+r.hz.label+'</div>'
+      +'<div class="cbadge '+tier+'">'+(pp!=null?pp+'%':'N/A')+'</div></div>'
+      +'<div class="dual-bar-wrap">'
+      +'<div class="dual-bar-label"><span>Hit rate</span><span>Base rate</span></div>'
+      +'<div class="btrack"><div class="bfill" style="width:'+bw+'%;background:'+bc+'"></div></div>'
+      +'<div class="btrack"><div class="bfill" style="width:'+brW+'%;background:var(--dim)"></div></div>'
+      +'<div class="dual-bar-label" style="margin-top:2px">'
+      +'<span class="sv" style="color:'+bc+'">'+(pp!=null?pp+'%':'--')+'</span>'
+      +'<span class="sv mna">'+(brPct!=null?brPct+'% base':'--')+'</span></div></div>'
+      +'<div class="srow2"><span class="sk">Edge</span>'
+      +'<span class="sv" style="color:'+(edge!=null&&edge>=MIN_EDGE?'var(--green)':edge!=null&&edge<0?'var(--red)':'var(--gold)')+'">'+
+        (edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'--')+'</span></div>'
+      +'<div class="srow2"><span class="sk">Exp net EV</span>'
+      +'<span class="sv" style="color:'+(r.expNet!=null&&r.expNet>0?'var(--green)':r.expNet!=null&&r.expNet<0?'var(--red)':'var(--muted)')+'">'+
+        (r.expNet!=null?(r.expNet>=0?'+':'')+r.expNet.toFixed(2)+'%':'--')+'</span></div>'
+      +(r.avgLoss!=null?'<div class="srow2"><span class="sk">Avg miss</span>'
+        +'<span class="sv" style="color:var(--red)">'+r.avgLoss.toFixed(2)+'%</span></div>':'')
+      +'<div class="srow2"><span class="sk">Pool / K</span><span class="sv mna">'+r.totalPool+' / '+r.n+'</span></div>'
+      +(m?'<div class="srow2"><span class="sk">Accuracy / MCC</span>'
+        +'<span class="sv '+mcls(m.accuracy)+'">'+mfmt(m.accuracy)+' / '
+        +(m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'--')+'</span></div>':'')
+      +(m&&!noBuy?'<div class="srow2"><span class="sk">Precision / F1</span>'
+        +'<span class="sv '+mcls(m.precision)+'">'+mfmt(m.precision)+' / '+mfmt(m.f1)+'</span></div>':'')
+      +(bt&&bt.winRate!=null?'<div class="srow2"><span class="sk">BT win / P&amp;L</span>'
+        +'<span class="sv '+(bt.winRate>=0.55?'pos':bt.winRate>=0.45?'neu':'neg')+'">'
+        +(bt.winRate*100).toFixed(0)+'% / '+(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'%</span></div>':'')
+      +(!r.srcAgree?'<div class="srow2"><span class="sk" style="color:var(--gold)">&#9888; Sources disagree</span><span></span></div>':'')
+      +'<div class="hz-why">'+why+'</div>'
+      +'</div>';
+  }
+  h+='</div>';
+
+  // ── SECTION 3: CURRENT MARKET STATE ──
+  h+='<div class="sec-head"><div class="sec-title">Section 3 \u2014 Current Market State</div>'
+    +'<div class="sec-sub">Smoothed physics + context features (averaged over '+SMOOTH_N+' completed candles) \u00b7 measurement only</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s3\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s3-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s3-body">'
+    +'These are the raw momentum physics that feed the KNN model. Averaged over the last '+SMOOTH_N+' completed candles for stability \u2014 re-running 10 seconds later gives the same reading.'
+    +'<ul>'
+    +'<li><span class="ik">Velocity</span> Rate of price change per candle (% basis). Positive = rising. This is the primary momentum signal.</li>'
+    +'<li><span class="ik">Acceleration</span> Is velocity increasing or decreasing? Positive acc + positive vel = momentum building. Negative acc + positive vel = momentum fading.</li>'
+    +'<li><span class="ik">Jerk</span> Rate of change of acceleration. High jerk means the move is unstable or reversing. Low jerk = smooth, sustained momentum.</li>'
+    +'<li><span class="ik">Range position</span> Where is price in the recent 30-candle high/low range? Near high (>70%) can mean overbought on short horizons but confirms trend on longer ones.</li>'
+    +'<li><span class="ik">Trend regime</span> 14-candle linear regression slope. Uptrend = price is consistently making higher closes. Ranging = no directional bias.</li>'
+    +'<li><span class="ik">Candle character</span> Body ratio: how much of the candle is body vs wicks. Strong body (>60%) = conviction. Indecision wicks (<30%) = uncertainty at this level.</li>'
+    +'<li><span class="ik">Volume momentum</span> Recent 5-candle volume vs prior 10. Rising volume (>1.1x) confirms price moves. Falling volume on a rally is a warning sign.</li>'
+    +'</ul>'
+    +'<b>Note:</b> These features are inputs, not outputs. A positive velocity alone doesn\'t mean buy \u2014 the KNN model judges whether this exact combination of features has historically led to the target move.'
+    +'</div></div>';
+  if(lp){
+    const c=lp.candle;
+    h+='<div class="phys-strip">'
+      +'<div class="pc"><div class="pc-lbl">Price ('+lp.src+')</div>'
+      +'<div class="pc-val neu">'+pf(lp.price)+'</div><div class="pc-sub">'+symbol+'</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#9889; Velocity</div>'
+      +'<div class="pc-val '+fc(lp.vel)+'">'+fp(lp.vel)+'</div><div class="pc-sub">% per candle (smoothed)</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#128640; Acceleration</div>'
+      +'<div class="pc-val '+fc(lp.acc)+'">'+fp(lp.acc)+'</div><div class="pc-sub">velocity changing?</div></div>'
+      +'<div class="pc"><div class="pc-lbl">&#9881; Jerk</div>'
+      +'<div class="pc-val '+fc(lp.jrk)+'">'+fp(lp.jrk)+'</div><div class="pc-sub">accel changing?</div></div>'
+      +'</div>'
+      +'<div class="ctx-grid">'
+      +'<div class="ctx-cell"><div class="ctx-lbl">Range position (30-candle)</div>'
+      +'<div class="ctx-val '+(c.rangePos>0.65?'pos':c.rangePos<0.35?'neg':'neu')+'">'
+      +(c.rangePos*100).toFixed(0)+'% &middot; '+(c.rangePos>0.7?'Near high':c.rangePos<0.3?'Near low':'Mid-range')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.rangePos*100).toFixed(0)+'%;background:'
+      +(c.rangePos>0.65?'var(--green)':c.rangePos<0.35?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-sub">'+c.distFromHi.toFixed(2)+'% below 30-candle high</div></div>'
+      +'<div class="ctx-cell"><div class="ctx-lbl">Trend regime (14-candle slope)</div>'
+      +'<div class="ctx-val '+(c.regSlope>0.02?'pos':c.regSlope<-0.02?'neg':'neu')+'">'
+      +(c.regSlope>0.02?'&#8593; Uptrend':c.regSlope<-0.02?'&#8595; Downtrend':'&rarr; Ranging')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'
+      +Math.min(100,Math.max(0,50+c.regSlope*500)).toFixed(0)+'%;background:'
+      +(c.regSlope>0?'var(--green)':'var(--red)')+'"></div></div>'
+      +'<div class="ctx-sub">Slope '+fp(c.regSlope,4)+'/candle</div></div>'
+      +'<div class="ctx-cell"><div class="ctx-lbl">Candle character</div>'
+      +'<div class="ctx-val '+(c.bodyRatio>0.6?'pos':c.bodyRatio<0.3?'neg':'neu')+'">'
+      +(c.bodyRatio>0.6?'Strong body':c.bodyRatio<0.3?'Indecision wicks':'Moderate')+'</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+(c.bodyRatio*100).toFixed(0)+'%;background:'
+      +(c.bodyRatio>0.6?'var(--green)':c.bodyRatio<0.3?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-sub">Wick balance '+(c.wickBalance>=0?'bullish':'bearish')
+      +' ('+fp(c.wickBalance*100,1)+')</div></div>'
+      +'<div class="ctx-cell"><div class="ctx-lbl">Volume momentum</div>'
+      +'<div class="ctx-val '+(c.volMom>1.1?'pos':c.volMom<0.8?'neg':'neu')+'">'
+      +(c.volMom>1.1?'Rising':c.volMom<0.8?'Falling':'Normal')+' &middot; '+c.volMom.toFixed(2)+'x</div>'
+      +'<div class="ctx-bar"><div class="ctx-fill" style="width:'+Math.min(100,c.volMom*50).toFixed(0)+'%;background:'
+      +(c.volMom>1.1?'var(--green)':c.volMom<0.8?'var(--red)':'var(--gold)')+'"></div></div>'
+      +'<div class="ctx-sub">Recent 5 vs prior 10 candles</div></div>'
+      +'</div>';
+  }
+
+  // ── SECTION 4: BACKTEST ──
+  h+='<div class="sec-head"><div class="sec-title">Section 4 \u2014 Historical Backtest</div>'
+    +'<div class="sec-sub">Out-of-sample: first 70% train, embargo gap, non-overlapping trades \u00b7 signals fire at base rate + '
+    +MIN_EDGE+'pp \u00b7 fees deducted \u00b7 most reliable forward estimate</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s4\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s4-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s4-body">'
+    +'The model trains on the first 70% of history, then is tested on the held-out tail. An <b>embargo gap</b> of LOOKBACK+horizon candles sits between train and test so no training window shares any candle or outcome with the test set, and test trades are <b>non-overlapping</b> (once entered, the holding period is skipped) so the same move is never counted twice. P&amp;L uses the <b>real</b> net return \u2014 a miss is marked to the actual horizon close, not a flat \u2212fee. This is the most honest forward estimate available offline.'
+    +'<ul>'
+    +'<li><span class="ik">Threshold</span> Signals fire when the held-out KNN confidence exceeds the base hit rate + '+MIN_EDGE+'pp. This is lower than the live entry threshold so we always get enough trades to evaluate.</li>'
+    +'<li><span class="ik">Win rate</span> % of backtest trades that hit the price target. <span class="hi">55%+</span> = good. <span class="warn">45\u201355%</span> = marginal. Below 45% = the model struggles on this horizon.</li>'
+    +'<li><span class="ik">Avg win/loss</span> Check that average win is larger than average loss. You want a positive expectancy even with a win rate below 50%.</li>'
+    +'<li><span class="ik">Running P&L</span> Cumulative % return if you took every signal. Should be positive and ideally trending upward through the table.</li>'
+    +'<li><span class="ik">Conf%</span> The confidence score at signal time. Higher confidence trades should have better outcomes \u2014 if not, the model is poorly calibrated on this horizon.</li>'
+    +'</ul>'
+    +'<b>No signals fired</b> means the threshold was never exceeded in the test set. This usually means the horizon has a very high or volatile base rate \u2014 treat it as low-conviction and skip.'
+    +'<br><b>Important:</b> Even a perfect backtest doesn\'t guarantee future results. Use it as one input alongside the live KNN confidence and current market state.'
+    +'</div></div>';
+  const btHorizons=Object.keys(btResults);
+  if(!btHorizons.length){
+    h+='<div class="bt-card"><div class="bt-empty">No backtest data -- pools too small. '
+      +'Try a pair with more history, or lower the min confidence setting.</div></div>';
+  }else{
+    for(const hzLabel of btHorizons){
+      const bt=btResults[hzLabel];
+      const tot=bt.wins+bt.losses;
+      const noTrades=tot===0;
+      h+='<div class="bt-card"><div class="bt-hdr">'
+        +'<div class="bt-title">'+hzLabel+' &middot; out-of-sample'
+        +(bt.btThresh?' &middot; fired at &ge;'+(bt.btThresh*100).toFixed(0)+'% conf':'')+'</div>'
+        +'<div class="bt-summary" style="color:'+(bt.totalPnl>=0?'var(--green)':'var(--red)')+'">'+
+          (noTrades?'No signals fired':(bt.totalPnl>=0?'+':'')+bt.totalPnl.toFixed(2)+'% &middot; '+tot+' trades')
+        +'</div></div>';
+      if(noTrades){
+        h+='<div class="bt-empty">'+(bt.note||'No signals fired at this threshold.')+'</div>';
+      }else{
+        h+='<div class="bt-grid">'
+          +'<div class="bt-stat"><div class="bt-stat-label">Trades</div>'
+          +'<div class="bt-stat-val bt-neu">'+tot+'</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Win rate</div>'
+          +'<div class="bt-stat-val '+(bt.winRate>=0.55?'bt-win':bt.winRate>=0.45?'bt-neu':'bt-loss')+'">'
+          +(bt.winRate*100).toFixed(0)+'%</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Avg win</div>'
+          +'<div class="bt-stat-val bt-win">+'+bt.avgWin.toFixed(2)+'%</div></div>'
+          +'<div class="bt-stat"><div class="bt-stat-label">Avg loss</div>'
+          +'<div class="bt-stat-val bt-loss">'+bt.avgLoss.toFixed(2)+'%</div></div></div>';
+        if(bt.trades.length){
+          h+='<div class="bt-tbl-wrap"><table class="bt">'
+            +'<tr><th>Date</th><th>Entry</th><th>Conf%</th><th>Outcome</th><th>P&amp;L</th><th>Running</th></tr>';
+          for(const t of bt.trades.slice(-15)){
+            const d=new Date(t.t);
+            const ds=d.toLocaleDateString([],{month:'short',day:'numeric'})+' '
+              +d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            h+='<tr><td class="bt-neu">'+ds+'</td>'
+              +'<td class="bt-neu">$'+t.entry.toLocaleString(undefined,{maximumFractionDigits:0})+'</td>'
+              +'<td class="bt-neu">'+t.conf.toFixed(0)+'%</td>'
+              +'<td class="'+(t.hit?'bt-win':'bt-loss')+'">'+(t.hit?'&#10003; Hit':'&#10007; Miss')+'</td>'
+              +'<td class="'+(t.pnl>=0?'bt-win':'bt-loss')+'">'+(t.pnl>=0?'+':'')+t.pnl.toFixed(2)+'%</td>'
+              +'<td class="'+(t.equity>=0?'bt-win':'bt-loss')+'">'+(t.equity>=0?'+':'')+t.equity.toFixed(2)+'%</td></tr>';
+          }
+          h+='</table></div><div class="bt-foot">Last 15 of '+tot+' trades &middot; '
+            +rtFee.toFixed(2)+'% round-trip fee deducted</div>';
+        }
+      }
+      h+='</div>';
+    }
+  }
+
+  // ── SECTION 5: MODEL ACCURACY ──
+  h+='<div class="sec-head"><div class="sec-title">Section 5 \u2014 Model Accuracy</div>'
+    +'<div class="sec-sub">Purged cross-validation on up to '+MAX_EVAL+' samples \u00b7 '
+    +DIMS.length+' features \u00b7 BUY predicted at conf \u2265 base rate + '+MIN_EDGE+'pp</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s5\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s5-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s5-body">'
+    +'Purged cross-validation: for each evaluated sample the model is re-scored, but every neighbour that shares a candle or outcome window with it (within LOOKBACK+horizon candles) is <b>removed</b> first. Adjacent fingerprints overlap by 9 of 10 bars, so without purging a \u201cneighbour\u201d is almost the same sample \u2014 which is what inflated the old leave-one-out scores. These numbers are lower but real.'
+    +'<ul>'
+    +'<li><span class="ik">Accuracy</span> Of all predictions (buy + no-buy), what % were correct. Misleading if the base rate is extreme \u2014 a 70% base rate means predicting "always buy" scores 70% accuracy.</li>'
+    +'<li><span class="ik">Precision</span> Of signals called BUY, what % actually hit the target. High precision = fewer false entries. More important than accuracy for trading.</li>'
+    +'<li><span class="ik">Recall</span> Of all real moves, what % did the model catch. Low recall = model is too conservative and misses profitable setups.</li>'
+    +'<li><span class="ik">F1</span> Harmonic mean of precision and recall. The single best summary of classifier quality. Above 0.6 is good.</li>'
+    +'<li><span class="ik">Specificity</span> Of real non-moves, what % did the model correctly skip. High spec = good at avoiding false signals.</li>'
+    +'<li><span class="ik">MCC</span> Matthews Correlation Coefficient. Works correctly even with imbalanced classes (which crypto always has). Range: \u22121 to +1. Above +0.2 = meaningful predictive power. Above +0.4 = strong.</li>'
+    +'<li><span class="ik">Base%</span> The natural hit rate for this horizon and target. MCC and edge are always calculated relative to this baseline.</li>'
+    +'</ul>'
+    +'<b class="warn">n/a\u2020 (Precision/Recall/F1)</b> means the model never predicted BUY during cross-validation \u2014 the threshold was too conservative for this horizon. It doesn\'t mean the model is broken; the live signal can still fire if confidence is high enough in the current setup.'
+    +'</div></div>'
+    +'<div class="ml-panel"><div class="ml-hdr"><div class="ml-title">Classifier performance</div>'
+    +'<div class="ml-sub">'+DIMS.join(' &middot; ')+'</div></div>'
+    +'<table class="ml"><tr><th>Hz</th><th>Accuracy</th><th>Precision</th><th>Recall</th>'
+    +'<th>F1</th><th>Spec.</th><th>MCC</th><th>Base%</th><th>N</th></tr>';
+  // bar() defined at top-level helpers
+  for(const r of hResults){
+    const m=r.bsrc&&r.bsrc.metrics?r.bsrc.metrics:null;
+    if(!m){h+='<tr><td style="color:var(--blue2)">'+r.hz.label+'</td>'
+      +'<td colspan="8" class="mna">No data -- pool too small or fetch failed</td></tr>';continue;}
+    const noBuy=(m.TP+m.FP)===0;
+    h+='<tr><td style="color:var(--blue2);font-weight:700">'+r.hz.label+'</td>'
+      +'<td class="'+mcls(m.accuracy)+'">'+mfmt(m.accuracy)+bar(m.accuracy)+'</td>'
+      +'<td class="'+(noBuy?'mna':mcls(m.precision))+'">'+(noBuy?'n/a&dagger;':mfmt(m.precision)+bar(m.precision))+'</td>'
+      +'<td class="'+(noBuy?'mna':mcls(m.recall))+'">'+(noBuy?'n/a&dagger;':mfmt(m.recall)+bar(m.recall))+'</td>'
+      +'<td class="'+(noBuy?'mna':mcls(m.f1))+'">'+(noBuy?'n/a&dagger;':mfmt(m.f1)+bar(m.f1))+'</td>'
+      +'<td class="'+mcls(m.specificity)+'">'+mfmt(m.specificity)+bar(m.specificity)+'</td>'
+      +'<td class="'+mcls(m.mcc,0.3,0.1)+'">'+(m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'--')+'</td>'
+      +'<td class="mna">'+mfmt(m.baseRate)+'</td>'
+      +'<td class="mna">'+m.evalN+'</td></tr>';
+  }
+  h+='</table><div class="ml-foot"><b>Accuracy</b> overall correct &middot; '
+    +'<b>Precision</b> of BUY calls, how many right &middot; '
+    +'<b>Recall</b> real moves caught &middot; <b>F1</b> precision/recall balance &middot; '
+    +'<b>MCC</b> quality -1 to +1, &gt;0.2 meaningful &middot; '
+    +'<b>Base%</b> natural hit rate &middot; '
+    +'<b>&dagger; n/a</b> model never predicted BUY on this horizon</div></div>';
+
+  // ── SECTION 6: DATA VALIDATION ──
+  h+='<div class="sec-head"><div class="sec-title">Section 6 \u2014 Data Validation</div>'
+    +'<div class="sec-sub">Sanity-check the raw candle data feeding the model</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s6\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s6-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s6-body">'
+    +'A quick health check on each data feed. Garbage in = garbage out \u2014 if a source looks wrong here, distrust signals from horizons that depend on it.'
+    +'<ul>'
+    +'<li><span class="ik">Candle count</span> Should match the requested limit. Fewer candles = shorter training window = less reliable KNN pool.</li>'
+    +'<li><span class="ik">Date range</span> Confirms candles cover the expected period. A short date range on the 4h or daily feed is a red flag.</li>'
+    +'<li><span class="ik">Range %</span> The high-to-low range across the full window. Unusually narrow range (crypto rarely trades in a tight band) may indicate stale or missing data.</li>'
+    +'<li><span class="ik">Net %</span> Price change from first to last candle. <span class="hi">Green</span> = uptrend over the window, <span style="color:var(--red)">red</span> = downtrend. Gives context for whether the model is trained on a bull or bear sample.</li>'
+    +'<li><span class="ik">\u2191 candles %</span> % of candles that closed higher than the prior candle. If this is near 50%, price has been ranging. High values (>60%) or low values (<40%) confirm a trend regime.</li>'
+    +'<li><span class="ik">Vol avg/recent</span> Average volume vs recent 5-candle volume. <span class="hi">Green = rising volume</span>. If recent volume is well below average, current price action has less conviction behind it.</li>'
+    +'</ul>'
+    +'<b>What to do if a source fails:</b> the app automatically falls back to a secondary API endpoint. If both fail, that timeframe is excluded from KNN calculations \u2014 horizons that depend on it will show "No data" in Section 2.'
+    +'</div></div>'
+    +'<div class="ds-table">';
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(!s||s.length<2){
+      h+='<div class="ds-row"><span class="ds-k">'+src.id+'</span>'
+        +'<span class="ds-err">&#10007; No data -- fetch failed or timed out</span></div>';
+      continue;
+    }
+    const closes=s.map(x=>x.c),vols=s.map(x=>x.v);
+    const hi=Math.max(...closes),lo=Math.min(...closes);
+    const netChg=((closes[closes.length-1]-closes[0])/closes[0]*100);
+    const upPct=((s.filter((x,i)=>i>0&&x.c>s[i-1].c).length/(s.length-1))*100).toFixed(0);
+    const avgVol=vols.reduce((a,b)=>a+b,0)/vols.length;
+    const recentVol=vols.slice(-5).reduce((a,b)=>a+b,0)/5;
+    const range=((hi-lo)/lo*100).toFixed(1);
+    const fd=new Date(s[0].t).toLocaleDateString();
+    const ld=new Date(s[s.length-1].t).toLocaleDateString();
+    h+='<div class="ds-row">'
+      +'<span class="ds-k">'+src.id+'</span>'
+      +'<span style="color:var(--muted);font-size:.68rem">'+s.length+' candles &middot; '+fd+'&ndash;'+ld+'</span>'
+      +'<span style="margin-left:auto;font-size:.7rem;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">'
+      +'<span>Range <b style="color:var(--gold)">'+range+'%</b> ($'+lo.toLocaleString(undefined,{maximumFractionDigits:0})
+      +'&ndash;$'+hi.toLocaleString(undefined,{maximumFractionDigits:0})+')</span>'
+      +'<span>Net <b class="'+(netChg>=0?'ds-ok':'ds-err')+'">'+(netChg>=0?'+':'')+netChg.toFixed(1)+'%</b></span>'
+      +'<span>&#8593;candles <b style="color:var(--blue2)">'+upPct+'%</b></span>'
+      +'<span>Vol avg/recent <b style="color:'+(recentVol>avgVol?'var(--green)':'var(--muted)')
+      +'">'+avgVol.toFixed(0)+'/'+recentVol.toFixed(0)+'</b></span>'
+      +'</span></div>';
+  }
+  h+='</div>';
+
+  // ── SECTION 7: RAW CANDLE DATA ──
+  h+='<div class="sec-head"><div class="sec-title">Section 7 \u2014 Raw Candle Data</div>'
+    +'<div class="sec-sub">Last '+RECENT_N+' candles with V/A/J and context features \u00b7 most recent source open by default \u00b7 tap header to expand</div></div>'
+    +'<div class="interp"><button class="interp-toggle" onclick="toggleInterp(\'s7\')">'
+    +'<span>\u2139\ufe0f How to read this section</span><span id="s7-arrow">\u25bc</span></button>'
+    +'<div class="interp-body" id="s7-body">'
+    +'The raw OHLCV candle data plus the computed physics features for each candle. The <span style="color:var(--green2)">\u25cf live row</span> is the currently forming candle \u2014 its physics will change until it closes.'
+    +'<ul>'
+    +'<li><span class="ik">O/H/L/C</span> Open, High, Low, Close prices for the candle.</li>'
+    +'<li><span class="ik">Vol</span> Volume traded during this candle. Compare to recent bars to gauge conviction.</li>'
+    +'<li><span class="ik">\u0394%</span> Candle-over-candle close change. The raw price momentum.</li>'
+    +'<li><span class="ik">Vel/Acc/Jrk</span> Physics derivatives. Vel = rate of close change. Acc = vel changing. Jrk = acc changing. A healthy uptrend shows positive vel, positive acc, and low jerk.</li>'
+    +'<li><span class="ik">Rng%</span> Where the close sits in the 30-candle high/low range. 100% = at the top. 0% = at the bottom.</li>'
+    +'<li><span class="ik">Body%</span> Candle body as % of total range. High = decisive move. Low = indecision or wicks dominating (potential reversal signal).</li>'
+    +'</ul>'
+    +'<b>Tip:</b> Look for a sequence of increasing Vel + positive Acc in the last 3\u20134 candles before a signal fires. That pattern \u2014 sustained, accelerating momentum \u2014 is exactly what the KNN model is trained to recognize.'
+    +'</div></div>';
+  const defaultOpen=(()=>{for(const src of SOURCES)if(seriesMap[src.id]&&seriesMap[src.id].length)return src.id;return null;})();
+  for(const src of SOURCES){
+    const s=seriesMap[src.id];
+    if(!s||!s.length){
+      h+='<div class="ctable-wrap"><div class="ctable-hdr">'
+        +'<div class="ctable-title">'+src.id+' -- '+src.label.trim()+'</div>'
+        +'<div class="ctable-meta" style="color:var(--red)">&#10007; No data</div></div></div>';
+      continue;
+    }
+    const recent=s.slice(-RECENT_N);
+    const last2=recent[recent.length-1],prev2=recent[recent.length-2];
+    const chg=prev2?((last2.c-prev2.c)/prev2.c*100):0;
+    const isDefault=src.id===defaultOpen;
+    h+='<div class="ctable-wrap">'
+      +'<div class="ctable-hdr" onclick="toggleTable(\'ct-'+src.id+'\')">'
+      +'<div class="ctable-title">'+src.id+' -- '+src.label.trim()+'</div>'
+      +'<div class="ctable-meta">'+pf(last2.c)+'&nbsp;'
+      +'<span class="'+(chg>=0?'up':'dn')+'">'+(chg>=0?'+':'')+chg.toFixed(3)+'%</span>'
+      +'&nbsp;&middot; tap '+(isDefault?'&#9652;':'&#9662;')+'</div></div>'
+      +'<div class="ctable-body'+(isDefault?' open':'')+'" id="ct-'+src.id+'">'
+      +'<table class="ct"><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th>'
+      +'<th>Vol</th><th>&#916;%</th><th>Vel</th><th>Acc</th><th>Jrk</th><th>Rng%</th><th>Body</th></tr>';
+    for(let i=0;i<recent.length;i++){
+      const row=recent[i],pr=i>0?recent[i-1]:null;
+      const dp=pr?((row.c-pr.c)/pr.c*100):0;
+      const isLive=i===recent.length-1;
+      const dt=new Date(row.t);
+      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '
+        +dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      h+='<tr'+(isLive?' class="live-row"':'')+'>'
+        +'<td>'+ts+(isLive?' &#128308;':'')+'</td>'
+        +'<td class="ct-neu">'+row.o.toFixed(2)+'</td>'
+        +'<td class="up">'+row.h.toFixed(2)+'</td>'
+        +'<td class="dn">'+row.l.toFixed(2)+'</td>'
+        +'<td class="'+(dp>=0?'up':'dn')+'">'+row.c.toFixed(2)+'</td>'
+        +'<td class="ct-neu">'+row.v.toFixed(0)+'</td>'
+        +'<td class="'+(dp>=0?'up':'dn')+'">'+(dp>=0?'+':'')+dp.toFixed(3)+'%</td>'
+        +'<td class="'+fc(row.vel)+'">'+row.vel.toFixed(4)+'%</td>'
+        +'<td class="'+fc(row.acc)+'">'+row.acc.toFixed(4)+'%</td>'
+        +'<td class="'+fc(row.jrk)+'">'+row.jrk.toFixed(4)+'%</td>'
+        +'<td class="'+(row.rangePos>0.65?'up':row.rangePos<0.35?'dn':'ct-neu')+'">'+(row.rangePos*100).toFixed(0)+'%</td>'
+        +'<td class="'+(row.bodyRatio>0.6?'up':row.bodyRatio<0.3?'dn':'ct-neu')+'">'+(row.bodyRatio*100).toFixed(0)+'%</td>'
+        +'</tr>';
+    }
+    h+='</table></div></div>';
+  }
+
+  // Notifications
+  const notifOk=typeof Notification!=='undefined';
+  if(!notifOk){
+    h+='<div class="notif-row"><p>Add to home screen as a PWA to enable push notifications.</p></div>';
+  }else if(Notification.permission==='default'){
+    h+='<div class="notif-row"><p>Enable alerts to be notified when a BUY signal fires.</p>'
+      +'<button class="notif-btn" onclick="askNotif()">Enable Alerts</button></div>';
+  }else if(Notification.permission==='granted'){
+    h+='<div class="notif-row"><p style="color:var(--green)">&#10003; Alerts active.</p></div>';
+  }
+
+  document.getElementById('scroll').innerHTML=h;
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────────────────────────
+async function askNotif(){
+  if(typeof Notification==='undefined'){showToast('Notifications not supported here');return;}
+  const p=await Notification.requestPermission();
+  showToast(p==='granted'?'&#10003; Alerts enabled':'Notifications blocked');
+  if(p!=='default') runAnalysis();
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+loadSettings();
+</script>
+</body>
+</html>
