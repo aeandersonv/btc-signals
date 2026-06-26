@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WAVE">
+<meta name="theme-color" content="#04080f">
+<title>WAVE 17 — Momentum Analyzer</title>
+<style>
+:root {
+  --bg:     #04080f;
+  --bg2:    #080e18;
+  --bg3:    #0c1420;
+  --bg4:    #101c2a;
+  --bg5:    #152030;
+  --border: #1a2d42;
+  --border2:#243d56;
+  --text:   #c8dced;
+  --muted:  #3d5570;
+  --dim:    #253748;
+
+  --green:  #00d97e;
+  --green2: #00ff94;
+  --green3: #00b868;
+  --amber:  #f0a500;
+  --amber2: #ffc040;
+  --red:    #ff3a55;
+  --blue:   #38aaff;
+  --blue2:  #6dc8ff;
+  --violet: #9b6dff;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'SF Mono', ui-monospace, 'Cascadia Code', monospace; font-size: 13px; overscroll-behavior: none; }
+.app { display: flex; flex-direction: column; height: 100%; }
+
+/* ── TOPBAR ── */
+.topbar {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: calc(10px + var(--safe-top)) 14px 10px;
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap;
+}
+.logo { display: flex; flex-direction: column; }
+.logo-name {
+  font-size: 1.15rem; font-weight: 700; letter-spacing: .12em;
+  background: linear-gradient(100deg, var(--green2) 0%, var(--blue2) 60%, var(--violet) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.logo-sub { font-size: .55rem; color: var(--muted); letter-spacing: .18em; text-transform: uppercase; margin-top: 1px; }
+.pair-select {
+  background: var(--bg4); color: var(--blue2); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 6px; font-family: inherit; font-size: .8rem; cursor: pointer;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+.pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; transition: background .3s; }
+.pulse.live  { background: var(--green); animation: glow 2.4s ease-in-out infinite; }
+.pulse.err   { background: var(--red); }
+.pulse.busy  { width: 10px; height: 10px; border: 2px solid var(--amber); border-top-color: transparent; border-radius: 50%; background: transparent; animation: spin .7s linear infinite; }
+@keyframes glow { 0%,100%{box-shadow:0 0 0 0 #00d97e55} 50%{box-shadow:0 0 0 5px #00d97e00} }
+@keyframes spin  { to{transform:rotate(360deg)} }
+.last-ts { font-size: .62rem; color: var(--muted); }
+.run-btn {
+  background: transparent; color: var(--green); border: 1px solid var(--green);
+  padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: .78rem;
+  transition: background .15s;
+}
+.run-btn:hover    { background: #00d97e12; }
+.run-btn:disabled { opacity: .35; cursor: default; }
+
+/* ── SETTINGS ── */
+.settings { background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.stoggle {
+  width: 100%; background: none; border: none; color: var(--muted); font-family: inherit;
+  font-size: .68rem; padding: 7px 14px; text-align: left; cursor: pointer;
+  display: flex; justify-content: space-between; letter-spacing: .06em; text-transform: uppercase;
+}
+.stoggle:hover { color: var(--text); }
+.sbody { padding: 10px 14px 12px; border-top: 1px solid var(--border); display: none; flex-direction: column; gap: 12px; }
+.sbody.open { display: flex; }
+.srow { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.sgrp { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+.slabel { font-size: .68rem; color: var(--muted); }
+.slabel b { color: var(--text); }
+.sinput {
+  background: var(--bg4); color: var(--amber); border: 1px solid var(--border);
+  width: 70px; padding: 5px 8px; border-radius: 5px; font-family: inherit; font-size: .8rem; text-align: right;
+}
+.sdesc { font-size: .62rem; color: var(--dim); line-height: 1.5; max-width: 180px; }
+.ssum {
+  padding: 5px 14px 7px; font-size: .67rem; color: var(--muted);
+  display: flex; gap: 14px; flex-wrap: wrap; border-top: 1px solid var(--border);
+}
+.ssum b { color: var(--amber2); }
+
+/* ── SCROLL ── */
+.scroll {
+  flex: 1; overflow-y: auto; padding: 10px;
+  padding-bottom: calc(18px + var(--safe-bot));
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ── PROGRESS LOG ── */
+.plog { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+.plog-title { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.ll { font-size: .71rem; padding: 3px 0; border-bottom: 1px solid var(--bg3); display: flex; align-items: center; gap: 8px; }
+.ll:last-child { border-bottom: none; }
+.li { flex-shrink: 0; width: 14px; }
+.lt { flex: 1; }
+.lv { color: var(--blue2); font-size: .67rem; }
+.le { color: var(--red); font-size: .67rem; }
+
+/* ── SECTION HEADER ── */
+.sec { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+.sec-title { font-size: .7rem; color: var(--text); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.sec-sub { font-size: .63rem; color: var(--muted); line-height: 1.55; }
+
+/* ══════════════════════════════════════════
+   DECISION CARD — the centrepiece
+══════════════════════════════════════════ */
+.decision-card {
+  border-radius: 12px; border: 1px solid var(--dim); padding: 0; overflow: hidden;
+  background: var(--bg2);
+}
+
+/* state headers */
+.dc-head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--dim);
+}
+.dc-head.state-go     { background: linear-gradient(135deg,#00d97e0f 0%,#00ff9405 100%); border-bottom-color: #00d97e30; }
+.dc-head.state-lean   { background: linear-gradient(135deg,#f0a5000d 0%,#ffc04005 100%); border-bottom-color: #f0a50030; }
+.dc-head.state-wait   { background: linear-gradient(135deg,#9b6dff0c 0%,#38aaff05 100%); border-bottom-color: #9b6dff28; }
+.dc-head.state-hold   { background: var(--bg2); border-bottom-color: var(--dim); }
+
+.dc-eyebrow { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; margin-bottom: 5px; }
+.dc-state   { font-size: 1.4rem; font-weight: 700; letter-spacing: .04em; line-height: 1; margin-bottom: 4px; }
+.dc-state.state-go   { color: var(--green2); }
+.dc-state.state-lean { color: var(--amber2); }
+.dc-state.state-wait { color: var(--violet); }
+.dc-state.state-hold { color: var(--muted); }
+.dc-tagline { font-size: .72rem; color: var(--muted); line-height: 1.5; }
+
+.dc-disclaimer {
+  margin: 0 16px; margin-top: 10px; padding: 5px 8px;
+  font-size: .63rem; color: var(--amber); line-height: 1.45;
+  background: #f0a50010; border: 1px solid #f0a50028; border-radius: 5px;
+}
+
+/* strategy summary band */
+.dc-strategy {
+  padding: 12px 16px; border-bottom: 1px solid var(--dim);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dc-strategy-label { font-size: .63rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.dc-strategy-main  { font-size: .82rem; color: var(--text); line-height: 1.6; }
+.dc-strategy-main b { color: var(--green2); }
+.dc-strategy-main .warn { color: var(--amber2); }
+.dc-strategy-main .dim  { color: var(--muted); }
+
+/* trade action block */
+.dc-trade {
+  padding: 14px 16px; border-bottom: 1px solid var(--dim);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.dc-trade-label { font-size: .63rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; }
+.trade-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.trade-key { font-size: .7rem; color: var(--muted); flex-shrink: 0; }
+.trade-val { font-size: .88rem; font-weight: 700; }
+.trade-val.buy-price  { color: var(--blue2); }
+.trade-val.sell-price { color: var(--green2); }
+.trade-val.net-ret    { color: var(--green2); }
+.trade-val.warn       { color: var(--amber2); }
+.trade-note { font-size: .63rem; color: var(--dim); }
+.trade-math { font-size: .68rem; color: var(--muted); padding: 7px 10px; background: var(--bg3); border-radius: 5px; line-height: 1.7; }
+.trade-math b { color: var(--text); }
+
+/* stack path */
+.dc-stack { padding: 12px 16px; border-bottom: 1px solid var(--dim); }
+.dc-stack-label { font-size: .63rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.stack-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stack-cell { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.stack-cell.active { border-color: var(--amber); background: #f0a5000a; }
+.stack-cell.best   { border-color: var(--green); background: #00d97e0a; }
+.sc-hz  { font-size: .65rem; color: var(--muted); margin-bottom: 3px; }
+.sc-ret { font-size: .88rem; font-weight: 700; }
+.sc-ret.pos  { color: var(--green2); }
+.sc-ret.warn { color: var(--amber2); }
+.sc-ret.dim  { color: var(--dim); }
+.sc-conf { font-size: .6rem; color: var(--dim); margin-top: 2px; }
+
+/* timer block */
+.dc-timer { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.timer-block { flex: 1; min-width: 120px; }
+.timer-label { font-size: .63rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+.timer-val   { font-size: 1.1rem; font-weight: 700; color: var(--amber2); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.timer-sub   { font-size: .62rem; color: var(--dim); margin-top: 2px; }
+.timer-exact { flex: 1; min-width: 120px; }
+.timer-exact .timer-val { font-size: .95rem; color: var(--blue2); }
+
+/* ── OPPORTUNITY GRID ── */
+.opp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media(min-width: 560px) { .opp-grid { grid-template-columns: repeat(3, 1fr); } }
+
+.opp-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 9px; padding: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.opp-card.tier-go   { border-color: var(--green3);  box-shadow: 0 0 14px #00d97e14; }
+.opp-card.tier-lean { border-color: #f0a50060; }
+.opp-card.tier-weak { border-color: var(--border); }
+.opp-card.tier-none { border-color: var(--border); opacity: .45; }
+
+.opp-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.opp-hz  { color: var(--blue2); font-size: .92rem; font-weight: 700; }
+.opp-badge { font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 3px; }
+.opp-badge.go   { background: #00d97e18; color: var(--green2); border: 1px solid var(--green); }
+.opp-badge.lean { background: #f0a50015; color: var(--amber2); border: 1px solid var(--amber); }
+.opp-badge.weak { color: var(--muted); border: 1px solid var(--dim); }
+.opp-badge.none { color: var(--dim); border: 1px solid var(--bg4); }
+
+.opp-ret { font-size: .95rem; font-weight: 700; }
+.opp-ret.pos  { color: var(--green2); }
+.opp-ret.warn { color: var(--amber2); }
+.opp-ret.neg  { color: var(--red); }
+.opp-ret.dim  { color: var(--dim); }
+
+.opp-rows { display: flex; flex-direction: column; gap: 2px; margin-top: 3px; }
+.opp-row  { display: flex; justify-content: space-between; }
+.ok { font-size: .63rem; color: var(--muted); }
+.ov { font-size: .65rem; }
+.ov.pos { color: var(--green); }
+.ov.neg { color: var(--red); }
+.ov.neu { color: var(--text); }
+.ov.dim { color: var(--dim); }
+
+.score-track { height: 3px; background: var(--bg4); border-radius: 2px; overflow: hidden; margin: 5px 0 3px; }
+.score-fill  { height: 100%; border-radius: 2px; transition: width .5s; }
+
+.opp-why { font-size: .63rem; color: var(--dim); line-height: 1.5; margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--bg3); }
+
+/* ── CONTEXT STRIP ── */
+.ctx-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+@media(min-width:480px) { .ctx-strip { grid-template-columns: repeat(4, 1fr); } }
+.ctx-cell { background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; }
+.ctx-lbl  { font-size: .6rem; color: var(--muted); margin-bottom: 2px; }
+.ctx-val  { font-size: .88rem; font-weight: 700; }
+.ctx-sub  { font-size: .58rem; color: var(--dim); margin-top: 2px; }
+
+/* ── MARKET CONTEXT ── */
+.mkt-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media(min-width:480px) { .mkt-grid { grid-template-columns: repeat(4, 1fr); } }
+.mkt-cell { background: var(--bg2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 10px; }
+.mkt-lbl  { font-size: .6rem; color: var(--muted); margin-bottom: 3px; }
+.mkt-val  { font-size: .82rem; font-weight: 700; }
+.mkt-bar  { height: 3px; background: var(--bg4); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.mkt-fill { height: 100%; border-radius: 2px; }
+.mkt-sub  { font-size: .58rem; color: var(--dim); margin-top: 3px; }
+
+/* ── MODEL TABLE ── */
+.model-panel { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.model-hdr   { padding: 9px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.model-title { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.model-sub   { font-size: .62rem; color: var(--dim); }
+table.mt { width: 100%; border-collapse: collapse; font-size: .68rem; }
+table.mt th { background: var(--bg3); color: var(--muted); padding: 5px 9px; text-align: left; font-weight: normal; font-size: .61rem; text-transform: uppercase; white-space: nowrap; }
+table.mt td { padding: 5px 9px; border-bottom: 1px solid var(--bg3); white-space: nowrap; }
+table.mt tr:last-child td { border-bottom: none; }
+table.mt tr:hover td { background: var(--bg3); }
+.mhi { color: var(--green); } .mmid { color: var(--amber); } .mlo { color: var(--red); } .mna { color: var(--dim); }
+.bari { display: inline-block; height: 3px; border-radius: 2px; vertical-align: middle; margin-left: 5px; }
+.model-foot { padding: 7px 12px; font-size: .62rem; color: var(--dim); line-height: 1.7; border-top: 1px solid var(--border); }
+
+/* ── BACKTEST ── */
+.bt-card  { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 0; }
+.bt-hdr   { padding: 9px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 5px; }
+.bt-title { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+.bt-sum   { font-size: .72rem; }
+.bt-stats { display: grid; grid-template-columns: repeat(4, 1fr); }
+@media(max-width:400px) { .bt-stats { grid-template-columns: repeat(2, 1fr); } }
+.bt-stat  { padding: 9px 12px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.bt-stat:last-child, .bt-stat:nth-child(4) { border-right: none; }
+@media(max-width:400px) { .bt-stat:nth-child(2n) { border-right: none; } .bt-stat:nth-child(4) { border-right: 1px solid var(--border); } .bt-stat:nth-child(2n-1):nth-child(n+3) { border-right: 1px solid var(--border); } }
+.bt-stat-lbl { font-size: .61rem; color: var(--muted); margin-bottom: 3px; }
+.bt-stat-val { font-size: .9rem; font-weight: 700; }
+table.btt { width: 100%; border-collapse: collapse; font-size: .67rem; min-width: 380px; }
+.bt-tbl-wrap { overflow-x: auto; border-top: 1px solid var(--border); }
+table.btt th { background: var(--bg3); color: var(--muted); padding: 5px 9px; font-weight: normal; font-size: .6rem; text-transform: uppercase; white-space: nowrap; text-align: left; }
+table.btt td { padding: 5px 9px; border-bottom: 1px solid var(--bg3); white-space: nowrap; }
+table.btt tr:last-child td { border-bottom: none; }
+.bt-win { color: var(--green); } .bt-loss { color: var(--red); } .bt-neu { color: var(--muted); }
+.bt-foot { padding: 7px 12px; font-size: .62rem; color: var(--dim); border-top: 1px solid var(--border); line-height: 1.6; }
+
+/* ── DATA / CANDLE TABLES ── */
+.ds-table { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ds-row   { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--bg3); font-size: .7rem; flex-wrap: wrap; gap: 4px; }
+.ds-row:last-child { border-bottom: none; }
+.ds-k  { color: var(--muted); font-weight: 700; min-width: 36px; }
+.ds-ok { color: var(--green); } .ds-err { color: var(--red); }
+
+.ctable-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.ctable-hdr  { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+.ctable-hdr:hover { background: var(--bg3); }
+.ctable-title { font-size: .72rem; color: var(--blue2); font-weight: 700; }
+.ctable-meta  { font-size: .64rem; color: var(--muted); }
+.ctable-body  { display: none; overflow-x: auto; border-top: 1px solid var(--border); }
+.ctable-body.open { display: block; }
+table.ct { width: 100%; border-collapse: collapse; font-size: .66rem; min-width: 560px; }
+table.ct th { background: var(--bg3); color: var(--muted); padding: 5px 8px; text-align: right; font-weight: normal; font-size: .59rem; text-transform: uppercase; white-space: nowrap; }
+table.ct th:first-child { text-align: left; }
+table.ct td { padding: 5px 8px; border-bottom: 1px solid var(--bg3); text-align: right; white-space: nowrap; }
+table.ct td:first-child { text-align: left; color: var(--muted); }
+table.ct tr:last-child td { border-bottom: none; }
+table.ct tr.live-row td { background: #00d97e07; }
+.up { color: var(--green); } .dn { color: var(--red); } .ct-neu { color: var(--text); }
+.pos { color: var(--green); } .neg { color: var(--red); } .neu { color: var(--text); }
+.fc-pos { color: var(--green); } .fc-neg { color: var(--red); } .fc-neu { color: var(--text); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: calc(20px + var(--safe-bot)); left: 50%; transform: translateX(-50%);
+  background: var(--bg2); border: 1px solid var(--green); color: var(--green2);
+  padding: 7px 18px; border-radius: 20px; font-size: .78rem; white-space: nowrap;
+  opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 99;
+}
+.toast.show { opacity: 1; }
+.empty-hint { color: var(--muted); font-size: .8rem; text-align: center; padding: 50px 20px; line-height: 2; }
+.empty-hint b { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-name">WAVE</div>
+    <div class="logo-sub">Momentum Analyzer v17</div>
+  </div>
+  <select class="pair-select" id="pairSelect" onchange="saveSettings()">
+    <option value="BTCUSDT">BTC / USDT</option>
+    <option value="ETHUSDT">ETH / USDT</option>
+    <option value="SOLUSDT">SOL / USDT</option>
+    <option value="XRPUSDT">XRP / USDT</option>
+    <option value="BNBUSDT">BNB / USDT</option>
+  </select>
+  <div class="topbar-right">
+    <div class="pulse" id="pulse"></div>
+    <div class="last-ts" id="lastTs">—</div>
+    <button class="run-btn" id="runBtn" onclick="runAnalysis()">↻ Analyze</button>
+  </div>
+</div>
+
+<div class="settings">
+  <button class="stoggle" onclick="toggleSettings()">
+    <span>⚙ Settings</span><span id="sarrow">▾</span>
+  </button>
+  <div class="sbody" id="sbody">
+    <div class="srow">
+      <div class="sgrp">
+        <div class="slabel"><b>Maker fee %</b></div>
+        <input class="sinput" type="number" id="makerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Limit order fee. Typically 0.08–0.10%.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Taker fee %</b></div>
+        <input class="sinput" type="number" id="takerFee" value="0.10" step="0.01" min="0" max="2" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Market order fee. Usually same as maker.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Entry buffer %</b></div>
+        <input class="sinput" type="number" id="entryBuffer" value="0.10" step="0.05" min="0" max="1" oninput="saveSettings();updateFeeDisplay()">
+        <div class="sdesc">Slippage allowance above last price for your limit buy.</div>
+      </div>
+      <div class="sgrp">
+        <div class="slabel"><b>Min confidence %</b></div>
+        <input class="sinput" type="number" id="minConf" value="55" step="1" min="50" max="95" oninput="saveSettings()">
+        <div class="sdesc">BUY only when KNN hit rate exceeds this AND beats base rate by 5pp.</div>
+      </div>
+    </div>
+  </div>
+  <div class="ssum">
+    Round-trip fee: <b id="rtFeeDisplay">0.20%</b> &nbsp;·&nbsp;
+    Entry buffer: <b id="bufDisplay">0.10%</b> &nbsp;·&nbsp;
+    Manual refresh only
+  </div>
+</div>
+
+<div class="scroll" id="scroll">
+  <div class="empty-hint">
+    Select a pair and tap <b>↻ Analyze</b>.<br><br>
+    Fetches up to 3 months of candles across 5 timeframes · computes physics (V/A/J) and
+    extended market context · runs KNN pattern match against historical setups ·
+    backtests every signal out-of-sample · recommends the best single trade or optimal
+    multi-trade stack to maximize your return for the day.
+  </div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const SOURCES = [
+  { id:'30m', interval:'30m', limit:480, label:'30m (~10 days)',  minutes:30  },
+  { id:'1h',  interval:'1h',  limit:500, label:'1h  (~21 days)',  minutes:60  },
+  { id:'4h',  interval:'4h',  limit:360, label:'4h  (~60 days)',  minutes:240 },
+  { id:'6h',  interval:'6h',  limit:240, label:'6h  (~60 days)',  minutes:360 },
+  { id:'1d',  interval:'1d',  limit:90,  label:'1d  (~3 months)', minutes:1440},
+];
+
+// Each horizon specifies which source candles feed it (first listed = preferred for backtest)
+const HORIZONS = [
+  { label:'1h',  minutes:60,   srcIds:['30m','1h'] },
+  { label:'2h',  minutes:120,  srcIds:['30m','1h'] },
+  { label:'4h',  minutes:240,  srcIds:['1h','4h']  },
+  { label:'6h',  minutes:360,  srcIds:['1h','6h']  },
+  { label:'12h', minutes:720,  srcIds:['4h','6h']  },
+  { label:'24h', minutes:1440, srcIds:['6h','1d']  },
+];
+
+const K          = 10;
+const LOOKBACK   = 10;
+const DECAY      = 0.5;
+const TIMEOUT    = 12000;
+const RECENT_N   = 10;
+const MAX_EVAL   = 120;
+const YIELD_EVERY= 15;
+const MIN_EDGE   = 5;      // pp above base rate required
+
+// Tier thresholds for stacking logic
+const TIER_GO   = 0.6;    // ≥0.6% net → "go" tier
+const TIER_LEAN = 0.25;   // ≥0.25% net → "lean" tier
+const STACK_TARGET = 1.0; // % net aggregate target for stacking
+
+const API_FALLBACKS = [
+  'https://data-api.binance.vision/api/v3/klines',
+  'https://api.binance.us/api/v3/klines',
+];
+
+// ═══════════════════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════════════════
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('wave_v16') || '{}');
+    if (s.pair)   document.getElementById('pairSelect').value   = s.pair;
+    if (s.maker  != null) document.getElementById('makerFee').value    = s.maker;
+    if (s.taker  != null) document.getElementById('takerFee').value    = s.taker;
+    if (s.buf    != null) document.getElementById('entryBuffer').value = s.buf;
+    if (s.conf   != null) document.getElementById('minConf').value     = s.conf;
+  } catch(e) {}
+  updateFeeDisplay();
+}
+function saveSettings() {
+  try {
+    localStorage.setItem('wave_v16', JSON.stringify({
+      pair:  document.getElementById('pairSelect').value,
+      maker: document.getElementById('makerFee').value,
+      taker: document.getElementById('takerFee').value,
+      buf:   document.getElementById('entryBuffer').value,
+      conf:  document.getElementById('minConf').value,
+    }));
+  } catch(e) {}
+}
+function updateFeeDisplay() {
+  const rt = (parseFloat(document.getElementById('makerFee').value)||0)
+           + (parseFloat(document.getElementById('takerFee').value)||0);
+  const buf = parseFloat(document.getElementById('entryBuffer').value)||0;
+  document.getElementById('rtFeeDisplay').textContent = rt.toFixed(2) + '%';
+  document.getElementById('bufDisplay').textContent   = buf.toFixed(2) + '%';
+}
+function toggleSettings() {
+  const b = document.getElementById('sbody');
+  const open = b.classList.toggle('open');
+  document.getElementById('sarrow').textContent = open ? '▴' : '▾';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PROGRESS LOG
+// ═══════════════════════════════════════════════════════════
+let logEl = null;
+function initLog() {
+  document.getElementById('scroll').innerHTML =
+    `<div class="plog" id="plog"><div class="plog-title">Running analysis…</div></div>`;
+  logEl = document.getElementById('plog');
+}
+function log(icon, text, val='', err=false) {
+  if (!logEl) return;
+  const d = document.createElement('div'); d.className = 'll';
+  d.innerHTML = `<span class="li">${icon}</span><span class="lt">${text}</span>`
+    + `<span class="${err?'le':'lv'}">${val}</span>`;
+  logEl.appendChild(d);
+  d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function replaceLog(icon, text, val='', err=false) {
+  if (!logEl) return;
+  const ls = logEl.querySelectorAll('.ll'); const l = ls[ls.length-1]; if (!l) return;
+  l.querySelector('.li').textContent = icon;
+  l.querySelector('.lt').textContent = text;
+  const v = l.querySelector('.lv,.le'); if (v) { v.textContent = val; v.className = err ? 'le' : 'lv'; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FETCH
+// ═══════════════════════════════════════════════════════════
+async function fetchCandles(symbol, interval, limit) {
+  let lastErr = null;
+  for (const base of API_FALLBACKS) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), TIMEOUT);
+    try {
+      const res = await fetch(`${base}?symbol=${symbol}&interval=${interval}&limit=${limit}`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (!res.ok) { const b = await res.text().catch(()=>''); throw new Error(`HTTP ${res.status}`); }
+      const raw = await res.json();
+      if (!Array.isArray(raw) || !raw.length) throw new Error('Empty response');
+      return raw.map(k => ({ t:+k[0], o:+k[1], h:+k[2], l:+k[3], c:+k[4], v:+k[5] }));
+    } catch(e) { clearTimeout(t); lastErr = e.name==='AbortError' ? new Error('Timed out') : e; }
+  }
+  throw lastErr || new Error('All sources failed');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PHYSICS — V/A/J
+// ═══════════════════════════════════════════════════════════
+function deriv(a) {
+  return a.map((v,i) => {
+    if (i === 0)        return a[1] - a[0];
+    if (i === a.length-1) return a[i] - a[i-1];
+    return (a[i+1] - a[i-1]) / 2;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MARKET CONTEXT FEATURES (fed into KNN fingerprint)
+//  Computed per candle, rolling where possible.
+// ═══════════════════════════════════════════════════════════
+function computeContextFeatures(candles, idx) {
+  const n    = candles.length;
+  const look = Math.min(idx+1, n);    // candles[0..idx]
+  const slice = candles.slice(Math.max(0, idx-look+1), idx+1);
+  const c  = candles[idx];
+  const closes = slice.map(x => x.c);
+  const highs  = slice.map(x => x.h);
+  const lows   = slice.map(x => x.l);
+
+  // Price position within recent range (0=at low, 1=at high)
+  const hi30 = Math.max(...candles.slice(Math.max(0,idx-29), idx+1).map(x=>x.h));
+  const lo30 = Math.min(...candles.slice(Math.max(0,idx-29), idx+1).map(x=>x.l));
+  const rangePos = (hi30 - lo30) > 0 ? (c.c - lo30) / (hi30 - lo30) : 0.5;
+
+  // Distance from 30-candle high / low (normalised %)
+  const distFromHi = hi30 > 0 ? (hi30 - c.c) / hi30 * 100 : 0;
+  const distFromLo = lo30 > 0 ? (c.c - lo30) / c.c * 100  : 0;
+
+  // Candle body ratio: body size / total wick range → conviction
+  const range = c.h - c.l;
+  const body  = Math.abs(c.c - c.o);
+  const bodyRatio = range > 0 ? body / range : 0;
+
+  // Upper / lower wick as % of range (indecision markers)
+  const upperWick = range > 0 ? (c.h - Math.max(c.c, c.o)) / range : 0;
+  const lowerWick = range > 0 ? (Math.min(c.c, c.o) - c.l) / range : 0;
+
+  // Trend regime: slope of linear regression on last 14 closes (normalised to price)
+  const regSlope = (() => {
+    const w = candles.slice(Math.max(0, idx-13), idx+1).map(x=>x.c);
+    if (w.length < 4) return 0;
+    const m = w.length; let sx=0, sy=0, sxy=0, sx2=0;
+    for (let i=0; i<m; i++) { sx+=i; sy+=w[i]; sxy+=i*w[i]; sx2+=i*i; }
+    const denom = m*sx2 - sx*sx;
+    if (!denom) return 0;
+    const slope = (m*sxy - sx*sy) / denom;
+    return w[m-1] > 0 ? slope / w[m-1] * 100 : 0;  // % per candle
+  })();
+
+  // Volume momentum: ratio of last-5 avg vol to prior-10 avg vol
+  const vSlice = candles.slice(Math.max(0,idx-14), idx+1).map(x=>x.v);
+  const recentVol = vSlice.slice(-5).reduce((a,b)=>a+b,0) / Math.min(5, vSlice.length);
+  const priorVol  = vSlice.slice(0,-5).reduce((a,b)=>a+b,0) / Math.max(1, vSlice.length-5);
+  const volMom    = priorVol > 0 ? recentVol / priorVol : 1;
+
+  return { rangePos, distFromHi, distFromLo, bodyRatio, upperWick, lowerWick, regSlope, volMom };
+}
+
+function buildPhysics(candles) {
+  const closes = candles.map(x => x.c);
+  const vel = deriv(closes);
+  const acc = deriv(vel);
+  const jrk = deriv(acc);
+  return candles.map((x, i) => ({
+    t:x.t, o:x.o, h:x.h, l:x.l, c:x.c, v:x.v,
+    vel: x.c > 0 ? vel[i]/x.c*100 : 0,
+    acc: x.c > 0 ? acc[i]/x.c*100 : 0,
+    jrk: x.c > 0 ? jrk[i]/x.c*100 : 0,
+    ...computeContextFeatures(candles, i),
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════
+//  KNN — normalised fingerprint with extended features
+// ═══════════════════════════════════════════════════════════
+const DIMS = ['vel','acc','jrk','rangePos','distFromHi','distFromLo','bodyRatio','regSlope','volMom'];
+
+function computeNormStats(series) {
+  const stats = {};
+  for (const d of DIMS) {
+    const vals = series.map(x => x[d] ?? 0);
+    const mean = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const std  = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0) / vals.length) || 1e-9;
+    stats[d] = { mean, std };
+  }
+  return stats;
+}
+
+function makeFP(series, endIdx, norm) {
+  if (endIdx < LOOKBACK-1) return null;
+  const v = [];
+  for (let i = endIdx-LOOKBACK+1; i <= endIdx; i++) {
+    for (const d of DIMS) {
+      v.push(((series[i][d] ?? 0) - norm[d].mean) / norm[d].std);
+    }
+  }
+  return v;
+}
+function euclidDist(a, b) { let s=0; for(let i=0;i<a.length;i++) s+=(a[i]-b[i])**2; return Math.sqrt(s); }
+function distToSim(d) { return 1/(1+d); }
+
+async function knnFull(series, horizonMinutes, candleMinutes, profitTarget, onProg) {
+  const prog = onProg || (()=>{});
+  const n    = series.length;
+  const hc   = Math.round(horizonMinutes / candleMinutes);
+  const minI = LOOKBACK-1, maxI = n-1-hc;
+
+  prog(`n=${n} hc=${hc} pool=${Math.max(0,maxI-minI)}`);
+  await tick();
+
+  if (maxI <= minI + LOOKBACK) { prog('insufficient data'); return null; }
+
+  const norm   = computeNormStats(series);
+  const curFP  = makeFP(series, n-1, norm);
+  if (!curFP) { prog('no fingerprint'); return null; }
+
+  // Build pool
+  const pool = [];
+  for (let i = minI; i <= maxI; i++) {
+    const f = makeFP(series, i, norm); if (!f) continue;
+    const recency = maxI > minI ? (i-minI)/(maxI-minI) : 1;
+    const rw   = Math.exp(-(1-recency)/DECAY);
+    const base = series[i].c;
+    let hit = false;
+    for (let f2=1; f2<=hc; f2++) {
+      if (i+f2 < n && series[i+f2].c >= base*(1+profitTarget/100)) { hit=true; break; }
+    }
+    pool.push({ fp:f, rw, hit, idx:i, t:series[i].t, price:series[i].c });
+  }
+  if (pool.length < LOOKBACK+2) { prog(`pool too small: ${pool.length}`); return null; }
+
+  const hitCount = pool.filter(p=>p.hit).length;
+  prog(`pool=${pool.length} hits=${hitCount}`);
+  await tick();
+
+  // Score vs current
+  for (const p of pool) { p.sim = distToSim(euclidDist(curFP, p.fp)); p.wt = p.sim * p.rw; }
+  pool.sort((a,b) => b.wt - a.wt);
+  const neighbours = pool.slice(0, Math.min(K, pool.length));
+
+  let wH=0, wT=0;
+  for (const nb of neighbours) { wT += nb.wt; if (nb.hit) wH += nb.wt; }
+  const confidence = wT > 1e-9 ? wH/wT : 0;
+  const avgSim     = neighbours.reduce((s,nb) => s+nb.sim, 0) / neighbours.length;
+  prog(`conf=${(confidence*100).toFixed(0)}% sim=${avgSim.toFixed(3)}`);
+  await tick();
+
+  // ML eval
+  const step    = Math.max(1, Math.floor(pool.length/MAX_EVAL));
+  const evalSet = pool.filter((_,i) => i%step===0).slice(0,MAX_EVAL);
+  const baseRate = hitCount / pool.length;
+  prog(`ML eval ${evalSet.length} samples…`);
+  await tick();
+
+  let TP=0,FP=0,TN=0,FN=0;
+  for (let ei=0; ei<evalSet.length; ei++) {
+    const tgt    = evalSet[ei];
+    const scored = [];
+    for (const p of pool) {
+      if (p.idx === tgt.idx) continue;
+      scored.push({ hit:p.hit, wt:distToSim(euclidDist(tgt.fp, p.fp))*p.rw });
+    }
+    scored.sort((a,b) => b.wt - a.wt);
+    const peers = scored.slice(0, K);
+    if (!peers.length) continue;
+    let pw=0, ph=0;
+    for (const p of peers) { pw+=p.wt; if(p.hit) ph+=p.wt; }
+    const predBuy = (pw>1e-9 ? ph/pw : 0) >= 0.5;
+    if (predBuy && tgt.hit)  TP++;
+    else if (predBuy)        FP++;
+    else if (!tgt.hit)       TN++;
+    else                     FN++;
+    if ((ei+1)%YIELD_EVERY===0 || (ei+1)===evalSet.length) {
+      prog(`ML ${ei+1}/${evalSet.length} TP=${TP} FP=${FP} TN=${TN} FN=${FN}`);
+      await tick();
+    }
+  }
+  const tot = TP+FP+TN+FN;
+  const accuracy    = tot > 0 ? (TP+TN)/tot : null;
+  const precision   = (TP+FP) > 0 ? TP/(TP+FP) : null;
+  const recall      = (TP+FN) > 0 ? TP/(TP+FN) : null;
+  const f1          = precision!=null&&recall!=null&&(precision+recall)>0 ? 2*precision*recall/(precision+recall) : null;
+  const specificity = (TN+FP) > 0 ? TN/(TN+FP) : null;
+  const mccd = Math.sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN));
+  const mcc  = mccd > 0 ? (TP*TN - FP*FN)/mccd : null;
+
+  // Expected net return:  confidence * profitTarget - (1-confidence) * rtFee
+  // We'll pass rtFee in at scoring time; store raw here
+  prog(`done acc=${accuracy!=null ? (accuracy*100).toFixed(0)+'%' : 'n/a'}`);
+  await tick();
+
+  return {
+    confidence, n:neighbours.length, totalPool:pool.length, avgSim, pool,
+    profitTarget,
+    metrics:{ accuracy, precision, recall, f1, specificity, mcc, baseRate, TP, FP, TN, FN, evalN:tot }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BACKTEST — out-of-sample 70/30 split
+// ═══════════════════════════════════════════════════════════
+async function runBacktest(trainPool, testPool, minConf, rtFee, profitTarget, onProg) {
+  const prog = onProg || (()=>{});
+  if (!trainPool||!testPool||testPool.length<5) return null;
+  const baseTrainHitRate = trainPool.filter(p=>p.hit).length / trainPool.length;
+  prog(`train=${trainPool.length} test=${testPool.length}`);
+  await tick();
+
+  const trades = [];
+  let equity = 0;
+
+  for (let ti=0; ti<testPool.length; ti++) {
+    const tgt    = testPool[ti];
+    const scored = trainPool.map(p => ({ hit:p.hit, wt:distToSim(euclidDist(tgt.fp, p.fp))*p.rw }));
+    scored.sort((a,b) => b.wt - a.wt);
+    const peers = scored.slice(0, K);
+    if (!peers.length) continue;
+    let pw=0, ph=0;
+    for (const p of peers) { pw+=p.wt; if(p.hit) ph+=p.wt; }
+    const conf = pw > 1e-9 ? ph/pw : 0;
+    const edge = (conf - baseTrainHitRate)*100;
+    if (conf >= minConf && edge >= MIN_EDGE) {
+      const pnl = tgt.hit ? profitTarget - rtFee : -rtFee;
+      equity += pnl;
+      trades.push({ t:tgt.t, entry:tgt.price, conf:conf*100, hit:tgt.hit, pnl, equity });
+    }
+    if ((ti+1)%10===0) { prog(`test ${ti+1}/${testPool.length}…`); await tick(); }
+  }
+  if (!trades.length) return null;
+  const wins    = trades.filter(t=>t.hit);
+  const losses  = trades.filter(t=>!t.hit);
+  const winRate = wins.length / trades.length;
+  const avgWin  = wins.length   ? wins.reduce((a,t)=>a+t.pnl,0)/wins.length   : 0;
+  const avgLoss = losses.length ? losses.reduce((a,t)=>a+t.pnl,0)/losses.length : 0;
+  const totalPnl= trades.reduce((a,t)=>a+t.pnl,0);
+  prog(`${trades.length} trades · ${(winRate*100).toFixed(0)}% win · ${totalPnl>=0?'+':''}${totalPnl.toFixed(2)}%`);
+  await tick();
+  return { trades, wins:wins.length, losses:losses.length, winRate, totalPnl, avgWin, avgLoss };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPECTED NET RETURN per horizon
+//  E[net] = conf * profitTarget - (1-conf) * rtFee
+//  This is the Kelly-inspired EV of taking the trade.
+// ═══════════════════════════════════════════════════════════
+function expectedNetReturn(conf, profitTarget, rtFee) {
+  return conf * profitTarget - (1 - conf) * rtFee;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TRADE PRICING
+// ═══════════════════════════════════════════════════════════
+function calcTradePrices(lastPrice, profitTarget, makerFee, takerFee, entryBuffer) {
+  // Entry: limit buy placed slightly above current price to ensure fill
+  const entryPrice = lastPrice * (1 + entryBuffer / 100);
+
+  // Limit sell: must net profitTarget% after fees
+  // Entry cost includes taker fill (market or aggressive limit)
+  // Sell side uses maker fee (limit order sitting on book)
+  // net = (sellPrice / entryPrice) * (1 - makerFee/100) - (1 + takerFee/100) - 1
+  // Solving: sellPrice = entryPrice * (1 + profitTarget/100 + takerFee/100) / (1 - makerFee/100)
+  const sellPrice = entryPrice * (1 + (profitTarget + takerFee) / 100) / (1 - makerFee/100);
+
+  const actualNet = (sellPrice / entryPrice) * (1 - makerFee/100) - (1 + takerFee/100);
+  return { entryPrice, sellPrice, actualNet: actualNet * 100 };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SELL TIMER
+// ═══════════════════════════════════════════════════════════
+let sellTimerInterval = null;
+function startSellTimer(horizonMinutes, candleMinutes) {
+  clearInterval(sellTimerInterval);
+  const now         = Date.now();
+  const ms          = candleMinutes * 60 * 1000;
+  // Snap to next candle close, then add remaining full candles to reach horizon
+  const msToClose   = ms - (now % ms);
+  const closeTime   = now + msToClose + (horizonMinutes/candleMinutes - 1) * ms;
+
+  function update() {
+    const cdEl  = document.getElementById('sell-countdown');
+    const clkEl = document.getElementById('sell-clock');
+    if (!cdEl && !clkEl) { clearInterval(sellTimerInterval); return; }
+    const rem = closeTime - Date.now();
+    if (rem <= 0) {
+      if (cdEl) cdEl.textContent = 'NOW — exit position';
+      if (clkEl) clkEl.textContent = new Date(closeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      clearInterval(sellTimerInterval);
+      return;
+    }
+    const h = Math.floor(rem / 3600000);
+    const m = Math.floor((rem % 3600000) / 60000);
+    const s = Math.floor((rem % 60000) / 1000);
+    if (cdEl) cdEl.textContent = (h>0 ? h+'h ' : '') + m + 'm ' + s + 's';
+    if (clkEl) clkEl.textContent = new Date(closeTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+  update();
+  sellTimerInterval = setInterval(update, 1000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ═══════════════════════════════════════════════════════════
+let busy       = false;
+let seriesMap  = {};
+let lastSymbol = '';
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN ANALYSIS
+// ═══════════════════════════════════════════════════════════
+async function runAnalysis() {
+  if (busy) return;
+  busy = true;
+  clearInterval(sellTimerInterval);
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('pulse').className = 'pulse busy';
+
+  const symbol     = document.getElementById('pairSelect').value;
+  const minConfPct = Math.max(50, Math.min(95, parseFloat(document.getElementById('minConf').value)||55));
+  const minConf    = minConfPct / 100;
+  const makerFee   = parseFloat(document.getElementById('makerFee').value)  || 0;
+  const takerFee   = parseFloat(document.getElementById('takerFee').value)  || 0;
+  const entryBuf   = parseFloat(document.getElementById('entryBuffer').value)|| 0.10;
+  const rtFee      = makerFee + takerFee;
+  lastSymbol       = symbol;
+
+  initLog();
+  log('🔍', `Analyzing ${symbol}`);
+  log('📡', 'Sources', '5 timeframes · extended KNN features · lookback='+LOOKBACK);
+  await tick();
+
+  // ── FETCH ──
+  seriesMap = {};
+  let fetchErrors = 0;
+  for (const src of SOURCES) {
+    log('⏳', `Fetching ${src.label}…`);
+    try {
+      const candles    = await fetchCandles(symbol, src.interval, src.limit);
+      seriesMap[src.id]= buildPhysics(candles);
+      replaceLog('✅', src.label, `${candles.length} candles`);
+    } catch(e) {
+      replaceLog('❌', src.label, e.message, true); fetchErrors++;
+    }
+    await tick();
+  }
+  if (fetchErrors === SOURCES.length) {
+    log('🚫', 'All fetches failed', 'Check connection', true);
+    finishRun(false); return;
+  }
+
+  // Live price from most granular available source
+  const lp = (() => {
+    for (const id of ['30m','1h','4h']) {
+      const s = seriesMap[id];
+      if (s && s.length) { const l = s[s.length-1]; return { price:l.c, vel:l.vel, acc:l.acc, jrk:l.jrk, src:id, candle:l }; }
+    }
+    return null;
+  })();
+
+  // ── KNN PER HORIZON ──
+  // For each horizon, try all its sources, weighted-average confidence
+  log('🧠', 'KNN pattern match…', `K=${K} lookback=${LOOKBACK} dims=${DIMS.length}`);
+  await tick();
+
+  // Determine best profitTarget per horizon dynamically:
+  // we'll compute KNN for a candidate target that makes sense for the horizon
+  // (shorter horizon → smaller target). We'll try two candidates and pick max EV.
+  function horizonDefaultTarget(hzMinutes) {
+    if (hzMinutes <=  60) return 0.5;
+    if (hzMinutes <= 120) return 0.75;
+    if (hzMinutes <= 240) return 1.0;
+    if (hzMinutes <= 360) return 1.25;
+    if (hzMinutes <= 720) return 1.75;
+    return 2.5;
+  }
+
+  const hResults = [];
+  for (const hz of HORIZONS) {
+    log('⏳', `${hz.label}`, 'starting…');
+    const profitTarget = horizonDefaultTarget(hz.minutes);
+    const srcR = [];
+
+    for (const sid of hz.srcIds) {
+      const s   = seriesMap[sid]; if (!s) continue;
+      const src = SOURCES.find(x => x.id === sid);
+      try {
+        const r = await knnFull(s, hz.minutes, src.minutes, profitTarget, msg => {
+          replaceLog('⚙️', `${hz.label} / ${sid}`, msg);
+        });
+        if (r) srcR.push({ srcId:sid, candleMinutes:src.minutes, ...r });
+      } catch(e) { replaceLog('❌', `${hz.label}/${sid}`, e.message, true); }
+      await tick();
+    }
+
+    // Weighted-average confidence across sources; also expose source agreement
+    let conf=null, nn=0, tp=0, wSum=0, wConf=0, avgSim=0;
+    for (const r of srcR) {
+      const w = r.avgSim || 0.5;
+      wConf += r.confidence * w; wSum += w;
+      nn = Math.max(nn, r.n); tp += r.totalPool; avgSim += r.avgSim;
+    }
+    if (srcR.length) { conf = wSum > 1e-9 ? wConf/wSum : null; avgSim /= srcR.length; }
+
+    const bsrc  = srcR.length ? srcR.reduce((a,b) => a.totalPool>b.totalPool ? a : b) : null;
+    const br    = bsrc?.metrics?.baseRate ?? null;
+    const edge  = conf!=null && br!=null ? (conf-br)*100 : null;
+    // Three tiers of validity:
+    //  'full'  — conf >= minConf AND edge >= MIN_EDGE → high conviction, tradeable
+    //  'lean'  — conf below threshold but edge >= MIN_EDGE → worth noting, soft signal
+    //  'none'  — negative edge or no data → no edge
+    let validity = 'none';
+    if (conf != null && nn >= 3) {
+      if (conf >= minConf && (edge ?? 0) >= MIN_EDGE)       validity = 'full';
+      else if ((edge ?? -99) >= MIN_EDGE)                    validity = 'lean';
+    }
+    const valid = validity === 'full';
+
+    // Compute EV for all horizons with positive edge — not just 'full' ones
+    // For 'lean' horizons, EV is real but confidence-discounted
+    const expNet = (conf != null && (edge ?? -99) >= 0)
+      ? expectedNetReturn(conf, profitTarget, rtFee)
+      : null;
+
+    // Source agreement flag
+    const srcConfs = srcR.map(r => r.confidence);
+    const srcAgree = srcConfs.length>1 ? Math.max(...srcConfs)-Math.min(...srcConfs) < 0.12 : true;
+
+    hResults.push({ hz, confidence:conf, n:nn, totalPool:tp, avgSim, srcResults:srcR, bsrc,
+      profitTarget, baseRate:br, edge, valid, validity, expNet, srcAgree });
+
+    replaceLog(validity==='full' ? '🟢' : validity==='lean' ? '🟡' : '⚪', `${hz.label}`,
+      conf!=null ? `conf=${(conf*100).toFixed(0)}% edge=${edge!=null?(edge>=0?'+':'')+edge.toFixed(0)+'pp':'n/a'} ev=${expNet!=null?(expNet>=0?'+':'')+expNet.toFixed(2)+'%':'n/a'}` : 'no data');
+    await tick();
+  }
+
+  // ── BACKTEST ──
+  log('📊', 'Backtesting (out-of-sample)…', '');
+  await tick();
+  const btResults = {};
+  for (const r of hResults) {
+    if (!r.bsrc?.pool || r.bsrc.pool.length < 30) continue;
+    try {
+      const split = Math.floor(r.bsrc.pool.length * 0.7);
+      const trainP= r.bsrc.pool.slice(0, split);
+      const testP = r.bsrc.pool.slice(split);
+      if (trainP.length < 10 || testP.length < 5) continue;
+      const bt = await runBacktest(trainP, testP, minConf, rtFee, r.profitTarget,
+        msg => replaceLog('📊', `BT ${r.hz.label}`, msg));
+      if (bt) btResults[r.hz.label] = bt;
+    } catch(e) {}
+    await tick();
+  }
+
+  // ── STRATEGY DECISION ──
+  const decision = buildDecision(hResults, btResults, makerFee, takerFee, entryBuf, rtFee, lp);
+
+  log(decision.state==='GO' ? '🎯' : decision.state==='LEAN' ? '↗' : decision.state==='WAIT' ? '🔮' : '⏸',
+    `Decision: ${decision.stateLabel}`, decision.tagline);
+  await tick();
+
+  try { renderAll({ symbol, lp, hResults, btResults, decision, makerFee, takerFee, entryBuf, rtFee, minConf }); }
+  catch(e) { log('🚫', 'Render error', e.message, true); }
+
+  finishRun(true);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STRATEGY DECISION ENGINE
+// ═══════════════════════════════════════════════════════════
+function buildDecision(hResults, btResults, makerFee, takerFee, entryBuf, rtFee, lp) {
+  // Score ALL horizons with positive edge — full and lean alike
+  const scored = hResults
+    .filter(r => r.expNet != null && r.expNet > 0)
+    .map(r => {
+      const bt      = btResults[r.hz.label];
+      const btBoost = bt && bt.winRate >= 0.55 ? 1.1 : bt && bt.winRate < 0.45 ? 0.85 : 1.0;
+      const adjEV   = r.expNet * btBoost;
+      return { ...r, adjEV };
+    })
+    .sort((a, b) => b.adjEV - a.adjEV);
+
+  const fullScored = scored.filter(r => r.validity === 'full');
+  const leanScored = scored.filter(r => r.validity === 'lean');
+
+  const bestFull = fullScored.find(r => r.adjEV >= TIER_GO);
+  const bestLean = leanScored.length ? leanScored[0] : null;
+  const anyFull  = fullScored.length ? fullScored[0] : null;
+
+  // Build non-overlapping stack from highest-EV horizons (any validity tier)
+  const allStackable = scored.filter(r => r.adjEV >= TIER_LEAN);
+  const stackPlan = [];
+  let stackTotal = 0;
+  for (const r of allStackable) {
+    if (stackPlan.length >= 4) break;
+    const overlap = stackPlan.some(prev =>
+      Math.min(prev.hz.minutes, r.hz.minutes) / Math.max(prev.hz.minutes, r.hz.minutes) > 0.5
+    );
+    if (!overlap) { stackPlan.push(r); stackTotal += r.adjEV; }
+  }
+
+  // Horizons with building momentum — positive vel+acc but no edge yet
+  const buildingUp = hResults.filter(r => {
+    if (r.validity !== 'none') return false;
+    return lp && lp.candle.vel > 0 && lp.candle.acc > 0 && (r.edge ?? -99) >= 0;
+  });
+
+  let state, stateLabel, tagline, primaryHorizon;
+
+  if (bestFull) {
+    const stackBetter = stackPlan.length >= 2 && stackTotal > bestFull.adjEV * 1.25
+      && stackPlan.some(r => r.validity === 'full');
+    if (stackBetter) {
+      state = 'LEAN'; stateLabel = 'Soft Signal';
+      tagline = `A high-confidence trade exists (${bestFull.hz.label}, ~+${bestFull.adjEV.toFixed(2)}% EV) but a ${stackPlan.length}-trade stack looks more productive (~+${stackTotal.toFixed(2)}% combined). Consider waiting for the stack.`;
+      primaryHorizon = bestFull;
+    } else {
+      state = 'GO'; stateLabel = 'Take the Trade';
+      tagline = `Strong signal on the ${bestFull.hz.label} horizon. KNN confidence ${(bestFull.confidence*100).toFixed(0)}% with +${bestFull.edge?.toFixed(0)}pp edge vs random. Expected net ~+${bestFull.adjEV.toFixed(2)}%.`;
+      primaryHorizon = bestFull;
+    }
+
+  } else if (anyFull) {
+    state = 'LEAN'; stateLabel = 'Soft Signal';
+    tagline = `Pattern confidence is solid on the ${anyFull.hz.label} horizon (${(anyFull.confidence*100).toFixed(0)}% KNN, +${anyFull.edge?.toFixed(0)}pp edge) but expected return is modest (~+${anyFull.adjEV.toFixed(2)}% net). Acceptable as part of a multi-trade day.`;
+    primaryHorizon = anyFull;
+
+  } else if (leanScored.length >= 2) {
+    state = 'LEAN'; stateLabel = 'Stacking Opportunity';
+    const topTwo = leanScored.slice(0, 2);
+    const topEV  = topTwo.reduce((s,r)=>s+r.adjEV,0);
+    tagline = `No single horizon has high enough confidence for a standalone trade, but ${leanScored.length} horizons show a positive edge above the base rate. Best lean stack: ${topTwo.map(r=>`${r.hz.label} (~+${r.adjEV.toFixed(2)}%)`).join(' + ')} = ~+${topEV.toFixed(2)}% combined. Lower conviction — size accordingly.`;
+    primaryHorizon = topTwo[0];
+
+  } else if (bestLean) {
+    state = 'WAIT'; stateLabel = 'Cautious Watch';
+    tagline = `The ${bestLean.hz.label} horizon shows a positive edge (+${bestLean.edge?.toFixed(0)}pp above base rate, ${(bestLean.confidence*100).toFixed(0)}% KNN) but falls below the ${Math.round(minConf*100)}% confidence threshold. Not a clean setup — watch for this to build.`;
+    primaryHorizon = null;
+
+  } else if (buildingUp.length > 0) {
+    state = 'WAIT'; stateLabel = 'Signal Building';
+    tagline = `No edge on any horizon yet, but velocity and acceleration are positive. Momentum may crystallize in the next 1–2 candles. Re-analyze shortly.`;
+    primaryHorizon = null;
+
+  } else {
+    state = 'HOLD'; stateLabel = 'Stand Down';
+    const bestAny = hResults.filter(r=>r.confidence!=null).sort((a,b)=>(b.edge??-99)-(a.edge??-99))[0];
+    tagline = bestAny && (bestAny.edge??-99) >= 0
+      ? `No tradeable edge right now. Best available: ${bestAny.hz.label} at ${(bestAny.confidence*100).toFixed(0)}% KNN (+${bestAny.edge?.toFixed(0)}pp edge) — not enough to act on yet. Watch for improvement.`
+      : `No horizon shows a positive edge over the base rate. KNN finds no historical precedent for a sustained move from this setup. Patience.`;
+    primaryHorizon = null;
+  }
+
+  let tradeDetails = null;
+  if (primaryHorizon && lp && (state === 'GO' || state === 'LEAN')) {
+    const tgt    = primaryHorizon.profitTarget;
+    tradeDetails = calcTradePrices(lp.price, tgt, makerFee, takerFee, entryBuf);
+    tradeDetails.profitTarget  = tgt;
+    tradeDetails.horizon       = primaryHorizon.hz;
+    tradeDetails.confidence    = primaryHorizon.confidence;
+    tradeDetails.validity      = primaryHorizon.validity;
+    const src = primaryHorizon.bsrc
+      ? SOURCES.find(x => x.id === primaryHorizon.bsrc.srcId)
+      : null;
+    tradeDetails.candleMinutes = src ? src.minutes : primaryHorizon.hz.minutes;
+  }
+
+  return { state, stateLabel, tagline, bestFull, bestLean, anyFull, stackPlan, stackTotal,
+    primaryHorizon, tradeDetails, scored, leanScored, buildingUp };
+}
+
+function finishRun(ok) {
+  busy = false;
+  document.getElementById('runBtn').disabled = false;
+  document.getElementById('pulse').className = ok ? 'pulse live' : 'pulse err';
+  document.getElementById('lastTs').textContent = new Date().toLocaleTimeString();
+  saveSettings();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ═══════════════════════════════════════════════════════════
+function fp(v, decimals=4) { return (v>=0?'+':'') + v.toFixed(decimals) + '%'; }
+function fc(v) { return v>0 ? 'fc-pos' : v<0 ? 'fc-neg' : 'fc-neu'; }
+function mfmt(v)  { return v===null ? '—' : (v*100).toFixed(1)+'%'; }
+function mcls(v, g=0.6, ok=0.5) { if(v===null)return'mna'; if(v>=g)return'mhi'; if(v>=ok)return'mmid'; return'mlo'; }
+
+function oppTier(adjEV) {
+  if (adjEV == null)    return 'none';
+  if (adjEV >= TIER_GO) return 'go';
+  if (adjEV >= TIER_LEAN) return 'lean';
+  if (adjEV >= 0)       return 'weak';
+  return 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MAIN RENDER
+// ═══════════════════════════════════════════════════════════
+function renderAll({ symbol, lp, hResults, btResults, decision, makerFee, takerFee, entryBuf, rtFee, minConf }) {
+  let h = '';
+  const { state, stateLabel, tagline, tradeDetails, stackPlan, stackTotal, scored, leanScored, bestFull, bestLean, anyFull, primaryHorizon } = decision;
+  const stateClass = state.toLowerCase() === 'go' ? 'state-go' : state.toLowerCase() === 'lean' ? 'state-lean' : state.toLowerCase() === 'wait' ? 'state-wait' : 'state-hold';
+
+  // ══ SECTION 1: DECISION CARD ══════════════════════════
+  h += `<div class="decision-card">
+    <div class="dc-head ${stateClass}">
+      <div class="dc-eyebrow">Wave Analysis · ${symbol}</div>
+      <div class="dc-state ${stateClass}">${
+        state==='GO'   ? '▲ Take the Trade' :
+        state==='LEAN' ? '↗ '  + stateLabel :
+        state==='WAIT' ? '◐ '  + stateLabel :
+                         '— ' + stateLabel
+      }</div>
+      <div class="dc-tagline">${tagline}</div>
+    </div>
+    <div class="dc-disclaimer">⚠ Model output only — not financial advice. Past patterns do not guarantee future results.</div>`;
+
+  // Strategy summary
+  h += `<div class="dc-strategy">
+    <div class="dc-strategy-label">Strategy</div>
+    <div class="dc-strategy-main">`;
+  if (state === 'GO' && bestFull) {
+    const bt = btResults[bestFull.hz.label];
+    h += `Best single trade: <b>${bestFull.hz.label} horizon</b>, expected net <b>~+${bestFull.adjEV.toFixed(2)}%</b>
+      (KNN conf ${(bestFull.confidence*100).toFixed(0)}% · +${bestFull.edge?.toFixed(0)}pp edge · target +${bestFull.profitTarget.toFixed(2)}% gross).
+      ${bt ? `Backtested win rate: <b>${(bt.winRate*100).toFixed(0)}%</b> over ${bt.wins+bt.losses} out-of-sample trades.` : ''}`;
+  } else if (state === 'LEAN' && stateLabel === 'Stacking Opportunity') {
+    const topTwo = leanScored.slice(0,2);
+    h += `<span class="warn">No high-confidence single trade.</span> However, <b>${leanScored.length} horizons</b> show a positive edge above the base rate.
+      Best stack: ${topTwo.map(r=>`<b>${r.hz.label}</b> (~+${r.adjEV.toFixed(2)}%)`).join(' + ')} = <b>~+${topTwo.reduce((s,r)=>s+r.adjEV,0).toFixed(2)}% combined</b>.
+      These are below the ${Math.round(minConf*100)}% confidence threshold individually, so size positions smaller than usual.`;
+  } else if (state === 'LEAN' && stackPlan.length >= 2) {
+    h += `<span class="warn">Stack beats single trade.</span> A <b>${stackPlan.length}-trade stack</b> targets
+      ~+<b>${stackTotal.toFixed(2)}%</b> combined:
+      ${stackPlan.map(r=>`${r.hz.label} (~+${r.adjEV.toFixed(2)}%)`).join(' → ')}.`;
+  } else if (state === 'LEAN') {
+    const ph = primaryHorizon;
+    if (ph) h += `<b>${ph.hz.label} horizon</b> shows a ${ph.validity==='full'?'solid':'moderate'} edge
+      (${(ph.confidence*100).toFixed(0)}% KNN, +${ph.edge?.toFixed(0)}pp above base rate). Expected net ~+${ph.adjEV?.toFixed(2)}%.
+      ${ph.validity!=='full'?'<span class="warn">Confidence below threshold — treat as a smaller, cautious position.</span>':''}`;
+  } else if (state === 'WAIT') {
+    h += `<span class="dim">Momentum is trending positive but no horizon has enough edge yet.
+      Re-analyze in the next candle or two.</span>`;
+  } else {
+    const bestAny = hResults.filter(r=>r.confidence!=null).sort((a,b)=>(b.edge??-99)-(a.edge??-99))[0];
+    if (bestAny) {
+      h += `<span class="dim">No edge strong enough to trade. Best horizon is <b>${bestAny.hz.label}</b>
+        at ${(bestAny.confidence*100).toFixed(0)}% KNN confidence
+        (${bestAny.edge!=null?(bestAny.edge>=0?'+':'')+bestAny.edge.toFixed(0)+'pp':'-'}  vs base rate).
+        Watch for this to improve before acting.</span>`;
+    } else {
+      h += `<span class="dim">No historical edge on any horizon. Patience.</span>`;
+    }
+  }
+  h += `</div></div>`;
+
+  // Trade action block
+  if (tradeDetails && lp) {
+    const td = tradeDetails;
+    const priceFmt = (p) => '$' + p.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    h += `<div class="dc-trade">
+      <div class="dc-trade-label">Trade Details · ${td.horizon.label} horizon · target +${td.profitTarget.toFixed(2)}% gross${td.validity==='lean'?' · ⚠ below confidence threshold — reduce position size':''}</div>
+      <div class="trade-row">
+        <span class="trade-key">Limit buy</span>
+        <span class="trade-val buy-price">${priceFmt(td.entryPrice)}</span>
+      </div>
+      <div class="trade-note">+${entryBuf.toFixed(2)}% buffer above last price ${priceFmt(lp.price)} to ensure fill</div>
+      <div class="trade-row" style="margin-top:6px">
+        <span class="trade-key">Limit sell</span>
+        <span class="trade-val sell-price">${priceFmt(td.sellPrice)}</span>
+      </div>
+      <div class="trade-note">Target exit — set this order immediately after your buy fills</div>
+      <div class="trade-row" style="margin-top:6px">
+        <span class="trade-key">Net after fees</span>
+        <span class="trade-val net-ret">+${td.actualNet.toFixed(3)}%</span>
+      </div>
+      <div class="trade-math" style="margin-top:8px">
+        <b>Fee math:</b> Buy ${priceFmt(td.entryPrice)} × (1+${takerFee.toFixed(2)}% taker) entry cost
+        → Sell ${priceFmt(td.sellPrice)} × (1−${makerFee.toFixed(2)}% maker) proceeds
+        → Net <b>+${td.actualNet.toFixed(3)}%</b>
+        &nbsp;|&nbsp; Round-trip fee: ${rtFee.toFixed(2)}%
+        &nbsp;|&nbsp; Order type: <b>limit buy → limit sell</b>
+      </div>
+    </div>`;
+  }
+
+  // Stack plan cells
+  if ((state === 'LEAN' || state === 'GO') && stackPlan.length >= 2) {
+    h += `<div class="dc-stack">
+      <div class="dc-stack-label">Multi-Trade Stack · target ~+${stackTotal.toFixed(2)}% combined</div>
+      <div class="stack-grid">`;
+    for (let i=0; i<stackPlan.length; i++) {
+      const r = stackPlan[i];
+      const isBest = i===0;
+      const bt = btResults[r.hz.label];
+      h += `<div class="stack-cell ${isBest?'best':'active'}">
+        <div class="sc-hz">${r.hz.label}${isBest?' ← now':''}</div>
+        <div class="sc-ret ${r.adjEV>=TIER_GO?'pos':'warn'}">+${r.adjEV.toFixed(2)}%</div>
+        <div class="sc-conf">${(r.confidence*100).toFixed(0)}% conf${bt?' · '+( bt.winRate*100).toFixed(0)+'% BT':''}</div>
+      </div>`;
+    }
+    h += `</div></div>`;
+  }
+
+  // Sell timer block
+  if (tradeDetails) {
+    h += `<div class="dc-timer">
+      <div class="timer-block">
+        <div class="timer-label">⏱ Countdown to exit</div>
+        <div class="timer-val" id="sell-countdown">calculating…</div>
+        <div class="timer-sub">If limit sell not hit — market sell at this time</div>
+      </div>
+      <div class="timer-exact">
+        <div class="timer-label">🕐 Sell at (local time)</div>
+        <div class="timer-val" id="sell-clock">—</div>
+        <div class="timer-sub">${tradeDetails.horizon.label} candle close</div>
+      </div>
+    </div>`;
+    setTimeout(() => startSellTimer(tradeDetails.horizon.minutes, tradeDetails.candleMinutes), 120);
+  }
+
+  h += `</div>`; // end decision-card
+
+  // ══ SECTION 2: ALL HORIZONS ═══════════════════════════
+  h += `<div class="sec">
+    <div class="sec-title">Horizon Opportunities</div>
+    <div class="sec-sub">Expected net return and KNN confidence for all six horizons · green = actionable · amber = stackable · grey = no edge</div>
+  </div>
+  <div class="opp-grid">`;
+
+  for (const r of hResults) {
+    const adjEV2 = r.expNet != null ? (btResults[r.hz.label]?.winRate >= 0.55 ? r.expNet*1.1 : btResults[r.hz.label]?.winRate < 0.45 ? r.expNet*0.85 : r.expNet) : null;
+    const tier = r.validity === 'full' ? oppTier(adjEV2) : r.validity === 'lean' ? 'lean' : 'none';
+    const pp   = r.confidence != null ? (r.confidence*100).toFixed(0) : null;
+    const evStr= r.expNet != null ? (r.expNet>=0?'+':'')+r.expNet.toFixed(2)+'%' : null;
+    const bt   = btResults[r.hz.label];
+    const edge = r.edge != null ? (r.edge>=0?'+':'')+r.edge.toFixed(0)+'pp' : null;
+    const barPct = r.confidence != null ? Math.round(r.confidence*100) : 0;
+    const barColor = tier==='go'?'var(--green)':tier==='lean'?'var(--amber)':'var(--dim)';
+
+    // Plain-English one-liner
+    let why = '';
+    if (!r.confidence) why = 'Insufficient data for this horizon.';
+    else if ((r.edge??-99)<0) why = `Pattern is ${Math.abs(r.edge??0).toFixed(0)}pp less likely than random than the base rate — no edge.`;
+    else if (r.validity === 'lean') why = `Positive edge (${edge} above base rate) but KNN confidence of ${pp}% is below the ${Math.round(minConf*100)}% threshold. Not a standalone trade — consider as part of a stack with appropriate position sizing.`;
+    else if (!r.confidence) why = `Insufficient historical data for this horizon.`;
+    else if (tier==='go')   why = `Strong precedent: ${pp}% of similar setups reached the target. ${bt?'Backtest confirms.':''}`;
+    else if (tier==='lean') why = `Positive edge (${edge}) but return is modest. Good as part of a stack.`;
+    else why = `Marginal — positive but thin. Not worth acting on alone.`;
+
+    h += `<div class="opp-card tier-${tier}">
+      <div class="opp-top">
+        <div class="opp-hz">${r.hz.label}</div>
+        <div class="opp-badge ${tier}">${tier==='go'?'▲ Strong':tier==='lean'?'↗ Stack':tier==='weak'?'→ Thin':'— None'}</div>
+      </div>
+      <div class="opp-ret ${tier==='go'?'pos':tier==='lean'?'warn':tier==='weak'?'dim':'dim'}">${evStr ?? '—'}</div>
+      <div class="score-track"><div class="score-fill" style="width:${barPct}%;background:${barColor}"></div></div>
+      <div class="opp-rows">
+        <div class="opp-row"><span class="ok">KNN conf</span><span class="ov ${r.validity==='full'?'pos':r.validity==='lean'?'':''}">${pp!=null?pp+'% '+(r.validity==='full'?'✓':r.validity==='lean'?'~':''):'—'}</span></div>
+        <div class="opp-row"><span class="ok">Base rate</span><span class="ov dim">${r.baseRate!=null?Math.round(r.baseRate*100)+'%':'—'}</span></div>
+        <div class="opp-row"><span class="ok">Edge vs random</span><span class="ov ${r.edge!=null&&r.edge>=MIN_EDGE?'pos':r.edge!=null&&r.edge<0?'neg':'dim'}">${edge??'—'}</span></div>
+        <div class="opp-row"><span class="ok">Target gross</span><span class="ov neu">+${r.profitTarget.toFixed(2)}%</span></div>
+        <div class="opp-row"><span class="ok">Pool / K</span><span class="ov dim">${r.totalPool} / ${r.n}</span></div>
+        ${bt ? `<div class="opp-row"><span class="ok">BT win rate</span><span class="ov ${bt.winRate>=0.6?'pos':bt.winRate>=0.5?'':''}">${(bt.winRate*100).toFixed(0)}% (${bt.wins+bt.losses})</span></div>` : ''}
+        ${bt ? `<div class="opp-row"><span class="ok">BT P&amp;L</span><span class="ov ${bt.totalPnl>=0?'pos':'neg'}">${bt.totalPnl>=0?'+':''}${bt.totalPnl.toFixed(2)}%</span></div>` : ''}
+        ${r.srcAgree===false?`<div class="opp-row"><span class="ok" style="color:var(--amber)">⚠ Sources disagree</span><span class="ov"></span></div>`:''}
+      </div>
+      <div class="opp-why">${why}</div>
+    </div>`;
+  }
+  h += `</div>`;
+
+  // ══ SECTION 3: CURRENT MARKET STATE ══════════════════
+  if (lp) {
+    const c = lp.candle;
+    const rangeLabel = c.rangePos > 0.7 ? 'Near high' : c.rangePos < 0.3 ? 'Near low' : 'Mid-range';
+    const regimeLabel= c.regSlope > 0.02 ? '↑ Uptrend' : c.regSlope < -0.02 ? '↓ Downtrend' : '→ Ranging';
+    const bodyLabel  = c.bodyRatio > 0.7 ? 'Strong body' : c.bodyRatio < 0.3 ? 'Indecision' : 'Moderate';
+    const volLabel   = c.volMom > 1.2 ? 'Rising' : c.volMom < 0.7 ? 'Falling' : 'Normal';
+
+    h += `<div class="sec">
+      <div class="sec-title">Current Market State</div>
+      <div class="sec-sub">Live physics + context features that feed the KNN model · measurement only, not prediction</div>
+    </div>
+    <div class="ctx-strip">
+      <div class="ctx-cell">
+        <div class="ctx-lbl">Price (${lp.src})</div>
+        <div class="ctx-val neu">$${lp.price.toLocaleString(undefined,{maximumFractionDigits:2})}</div>
+        <div class="ctx-sub">${symbol}</div>
+      </div>
+      <div class="ctx-cell">
+        <div class="ctx-lbl">⚡ Velocity</div>
+        <div class="ctx-val ${fc(lp.vel)}">${fp(lp.vel)}</div>
+        <div class="ctx-sub">price change / candle</div>
+      </div>
+      <div class="ctx-cell">
+        <div class="ctx-lbl">🚀 Acceleration</div>
+        <div class="ctx-val ${fc(lp.acc)}">${fp(lp.acc)}</div>
+        <div class="ctx-sub">velocity changing?</div>
+      </div>
+      <div class="ctx-cell">
+        <div class="ctx-lbl">⚙️ Jerk</div>
+        <div class="ctx-val ${fc(lp.jrk)}">${fp(lp.jrk)}</div>
+        <div class="ctx-sub">accel changing?</div>
+      </div>
+    </div>
+    <div class="mkt-grid" style="margin-top:8px">
+      <div class="mkt-cell">
+        <div class="mkt-lbl">Range position (30-candle)</div>
+        <div class="mkt-val ${c.rangePos>0.7?'pos':c.rangePos<0.3?'neg':'neu'}">${(c.rangePos*100).toFixed(0)}% · ${rangeLabel}</div>
+        <div class="mkt-bar"><div class="mkt-fill" style="width:${(c.rangePos*100).toFixed(0)}%;background:${c.rangePos>0.65?'var(--green)':c.rangePos<0.35?'var(--red)':'var(--amber)'}"></div></div>
+        <div class="mkt-sub">${c.distFromHi.toFixed(2)}% below 30-candle high</div>
+      </div>
+      <div class="mkt-cell">
+        <div class="mkt-lbl">Trend regime (14-candle)</div>
+        <div class="mkt-val ${c.regSlope>0.02?'pos':c.regSlope<-0.02?'neg':'neu'}">${regimeLabel}</div>
+        <div class="mkt-bar"><div class="mkt-fill" style="width:${Math.min(100,50+c.regSlope*500).toFixed(0)}%;background:${c.regSlope>0?'var(--green)':'var(--red)'}"></div></div>
+        <div class="mkt-sub">Lin-reg slope ${fp(c.regSlope,4)}/candle</div>
+      </div>
+      <div class="mkt-cell">
+        <div class="mkt-lbl">Candle character</div>
+        <div class="mkt-val ${c.bodyRatio>0.6?'pos':c.bodyRatio<0.3?'neg':'neu'}">${bodyLabel}</div>
+        <div class="mkt-bar"><div class="mkt-fill" style="width:${(c.bodyRatio*100).toFixed(0)}%;background:${c.bodyRatio>0.6?'var(--green)':c.bodyRatio<0.3?'var(--red)':'var(--amber)'}"></div></div>
+        <div class="mkt-sub">Upper wick ${(c.upperWick*100).toFixed(0)}% · Lower wick ${(c.lowerWick*100).toFixed(0)}%</div>
+      </div>
+      <div class="mkt-cell">
+        <div class="mkt-lbl">Volume momentum</div>
+        <div class="mkt-val ${c.volMom>1.1?'pos':c.volMom<0.8?'neg':'neu'}">${volLabel} · ${c.volMom.toFixed(2)}×</div>
+        <div class="mkt-bar"><div class="mkt-fill" style="width:${Math.min(100,c.volMom*50).toFixed(0)}%;background:${c.volMom>1.1?'var(--green)':c.volMom<0.8?'var(--red)':'var(--amber)'}"></div></div>
+        <div class="mkt-sub">Recent 5 vs prior 10 candles</div>
+      </div>
+    </div>`;
+  }
+
+  // ══ SECTION 4: BACKTESTS ══════════════════════════════
+  const btHorizons = Object.keys(btResults);
+  if (btHorizons.length) {
+    h += `<div class="sec">
+      <div class="sec-title">Historical Backtest</div>
+      <div class="sec-sub">Out-of-sample: model trained on first 70% · tested on most recent 30% · honest performance estimate</div>
+    </div>`;
+    for (const hzLabel of btHorizons) {
+      const bt  = btResults[hzLabel];
+      const tot = bt.wins + bt.losses;
+      const pnlCls = bt.totalPnl>=0?'bt-win':'bt-loss';
+      const wrCls  = bt.winRate>=0.6?'bt-win':bt.winRate>=0.5?'bt-neu':'bt-loss';
+      h += `<div class="bt-card">
+        <div class="bt-hdr">
+          <div class="bt-title">${hzLabel} — out-of-sample</div>
+          <div class="bt-sum ${pnlCls}">${bt.totalPnl>=0?'+':''}${bt.totalPnl.toFixed(2)}% · ${tot} trades</div>
+        </div>
+        <div class="bt-stats">
+          <div class="bt-stat"><div class="bt-stat-lbl">Trades</div><div class="bt-stat-val bt-neu">${tot}</div></div>
+          <div class="bt-stat"><div class="bt-stat-lbl">Win rate</div><div class="bt-stat-val ${wrCls}">${(bt.winRate*100).toFixed(0)}%</div></div>
+          <div class="bt-stat"><div class="bt-stat-lbl">Avg win</div><div class="bt-stat-val bt-win">+${bt.avgWin.toFixed(2)}%</div></div>
+          <div class="bt-stat"><div class="bt-stat-lbl">Avg loss</div><div class="bt-stat-val bt-loss">${bt.avgLoss.toFixed(2)}%</div></div>
+        </div>
+        ${bt.trades.length ? `
+        <div class="bt-tbl-wrap"><table class="btt">
+          <tr><th>Date</th><th>Entry</th><th>Conf%</th><th>Outcome</th><th>P&L</th><th>Running</th></tr>
+          ${bt.trades.slice(-15).map(t => {
+            const d  = new Date(t.t);
+            const ds = d.toLocaleDateString([],{month:'short',day:'numeric'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+            return `<tr>
+              <td class="bt-neu">${ds}</td>
+              <td class="bt-neu">$${t.entry.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+              <td class="bt-neu">${t.conf.toFixed(0)}%</td>
+              <td class="${t.hit?'bt-win':'bt-loss'}">${t.hit?'✓ Hit':'✗ Miss'}</td>
+              <td class="${t.pnl>=0?'bt-win':'bt-loss'}">${t.pnl>=0?'+':''}${t.pnl.toFixed(2)}%</td>
+              <td class="${t.equity>=0?'bt-win':'bt-loss'}">${t.equity>=0?'+':''}${t.equity.toFixed(2)}%</td>
+            </tr>`;
+          }).join('')}
+        </table></div>
+        <div class="bt-foot">Last 15 of ${tot} trades · fees ${rtFee.toFixed(2)}% round-trip deducted</div>` : ''}
+      </div>`;
+    }
+  }
+
+  // ══ SECTION 5: MODEL ACCURACY ════════════════════════
+  h += `<div class="sec">
+    <div class="sec-title">Model Accuracy</div>
+    <div class="sec-sub">Leave-one-out cross-validation on up to ${MAX_EVAL} samples per horizon · ${DIMS.length} features (V/A/J + context)</div>
+  </div>
+  <div class="model-panel">
+    <table class="mt">
+      <tr><th>Hz</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th><th>Specificity</th><th>MCC</th><th>Base rate</th><th>N</th></tr>`;
+  for (const r of hResults) {
+    const m = r.bsrc?.metrics ?? null;
+    if (!m) { h += `<tr><td style="color:var(--blue2)">${r.hz.label}</td><td colspan="8" class="mna">No data</td></tr>`; continue; }
+    const noBuy = (m.TP+m.FP)===0;
+    const bar   = v => v!=null ? `<span class="bari" style="width:${Math.round((v||0)*36)}px;background:${v>=.6?'var(--green)':v>=.5?'var(--amber)':'var(--red)'}"></span>` : '';
+    h += `<tr>
+      <td style="color:var(--blue2);font-weight:700">${r.hz.label}</td>
+      <td class="${mcls(m.accuracy)}">${mfmt(m.accuracy)}${bar(m.accuracy)}</td>
+      <td class="${noBuy?'mna':mcls(m.precision)}">${noBuy?'n/a':mfmt(m.precision)+bar(m.precision)}</td>
+      <td class="${noBuy?'mna':mcls(m.recall)}">${noBuy?'n/a':mfmt(m.recall)+bar(m.recall)}</td>
+      <td class="${noBuy?'mna':mcls(m.f1)}">${noBuy?'n/a':mfmt(m.f1)+bar(m.f1)}</td>
+      <td class="${mcls(m.specificity)}">${mfmt(m.specificity)}${bar(m.specificity)}</td>
+      <td class="${mcls(m.mcc,.3,.1)}">${m.mcc!=null?(m.mcc>=0?'+':'')+m.mcc.toFixed(2):'—'}</td>
+      <td class="mna">${mfmt(m.baseRate)}</td>
+      <td class="mna">${m.evalN}</td>
+    </tr>`;
+  }
+  h += `</table>
+    <div class="model-foot">
+      Features: velocity · acceleration · jerk · range position · distance from 30-candle high · distance from low · candle body ratio · trend regime slope · volume momentum
+      &nbsp;·&nbsp; <b>MCC</b> is the primary quality metric (−1 to +1, &gt;0.2 is meaningful)
+      &nbsp;·&nbsp; <b>n/a</b> = model never predicted BUY on this horizon
+    </div>
+  </div>`;
+
+  // ══ SECTION 6: DATA VALIDATION ═══════════════════════
+  h += `<div class="sec">
+    <div class="sec-title">Data Validation</div>
+    <div class="sec-sub">Sanity-check the raw candle data feeding the model</div>
+  </div>
+  <div class="ds-table">`;
+  for (const src of SOURCES) {
+    const s = seriesMap[src.id]; if (!s || s.length < 2) continue;
+    const closes = s.map(x=>x.c), vols = s.map(x=>x.v);
+    const hi = Math.max(...closes), lo = Math.min(...closes);
+    const netChg = ((closes[closes.length-1]-closes[0])/closes[0]*100);
+    const upPct  = ((s.filter((x,i)=>i>0&&x.c>s[i-1].c).length/(s.length-1))*100).toFixed(0);
+    const avgVol = vols.reduce((a,b)=>a+b,0)/vols.length;
+    const recVol = vols.slice(-5).reduce((a,b)=>a+b,0)/5;
+    const range  = ((hi-lo)/lo*100).toFixed(1);
+    const fd = new Date(s[0].t).toLocaleDateString();
+    const ld = new Date(s[s.length-1].t).toLocaleDateString();
+    h += `<div class="ds-row">
+      <span class="ds-k">${src.id}</span>
+      <span style="color:var(--muted);font-size:.65rem">${s.length} candles · ${fd}–${ld}</span>
+      <span style="margin-left:auto;font-size:.68rem;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+        <span>Range <b style="color:var(--amber)">${range}%</b></span>
+        <span>Net <b class="${netChg>=0?'ds-ok':'ds-err'}">${(netChg>=0?'+':'')+netChg.toFixed(1)}%</b></span>
+        <span>↑candles <b style="color:var(--blue2)">${upPct}%</b></span>
+        <span>Vol <b style="color:${recVol>avgVol?'var(--green)':'var(--muted)'}">${(recVol/avgVol).toFixed(2)}×</b></span>
+      </span>
+    </div>`;
+  }
+  h += `</div>`;
+
+  // ══ SECTION 7: RAW CANDLE TABLES ═════════════════════
+  h += `<div class="sec">
+    <div class="sec-title">Raw Candle Data</div>
+    <div class="sec-sub">Last ${RECENT_N} candles per source with V/A/J and context features · tap to expand</div>
+  </div>`;
+  for (const src of SOURCES) {
+    const s = seriesMap[src.id];
+    if (!s || !s.length) {
+      h += `<div class="ctable-wrap"><div class="ctable-hdr">
+        <div class="ctable-title">${src.id}</div>
+        <div class="ctable-meta" style="color:var(--red)">✗ No data</div>
+      </div></div>`;
+      continue;
+    }
+    const recent = s.slice(-RECENT_N);
+    const last2  = recent[recent.length-1], prev2 = recent[recent.length-2];
+    const chg    = prev2 ? ((last2.c-prev2.c)/prev2.c*100) : 0;
+    h += `<div class="ctable-wrap">
+      <div class="ctable-hdr" onclick="toggleTable('ct-${src.id}')">
+        <div class="ctable-title">${src.id} — ${src.label.trim()}</div>
+        <div class="ctable-meta">$${last2.c.toLocaleString(undefined,{maximumFractionDigits:2})}
+          &nbsp;<span class="${chg>=0?'up':'dn'}">${(chg>=0?'+':'')+chg.toFixed(3)}%</span>
+          &nbsp;· tap ▾</div>
+      </div>
+      <div class="ctable-body" id="ct-${src.id}">
+        <table class="ct">
+          <tr><th>Time</th><th>Close</th><th>Δ%</th><th>Vel</th><th>Acc</th><th>Jrk</th><th>Range pos</th><th>Body</th><th>RegSlope</th><th>VolMom</th></tr>`;
+    for (let i=0; i<recent.length; i++) {
+      const row=recent[i], pr=i>0?recent[i-1]:null;
+      const dp=pr?((row.c-pr.c)/pr.c*100):0;
+      const isLive=i===recent.length-1;
+      const dt=new Date(row.t);
+      const ts=dt.toLocaleDateString([],{month:'short',day:'numeric'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      h+=`<tr${isLive?' class="live-row"':''}>
+        <td>${ts}${isLive?' 🔴':''}</td>
+        <td class="${dp>=0?'up':'dn'}">${row.c.toFixed(2)}</td>
+        <td class="${dp>=0?'up':'dn'}">${(dp>=0?'+':'')+dp.toFixed(3)}%</td>
+        <td class="${fc(row.vel)}">${row.vel.toFixed(4)}%</td>
+        <td class="${fc(row.acc)}">${row.acc.toFixed(4)}%</td>
+        <td class="${fc(row.jrk)}">${row.jrk.toFixed(4)}%</td>
+        <td class="ct-neu">${(row.rangePos*100).toFixed(0)}%</td>
+        <td class="${row.bodyRatio>0.6?'up':row.bodyRatio<0.3?'dn':'ct-neu'}">${(row.bodyRatio*100).toFixed(0)}%</td>
+        <td class="${fc(row.regSlope)}">${row.regSlope.toFixed(4)}%</td>
+        <td class="${row.volMom>1.1?'up':row.volMom<0.8?'dn':'ct-neu'}">${row.volMom.toFixed(2)}×</td>
+      </tr>`;
+    }
+    h += `</table></div></div>`;
+  }
+
+  document.getElementById('scroll').innerHTML = h;
+}
+
+function toggleTable(id) { const el=document.getElementById(id); if(el) el.classList.toggle('open'); }
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function tick() { return new Promise(r => setTimeout(r, 20)); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+loadSettings();
+</script>
+</body>
+</html>
